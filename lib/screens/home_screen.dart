@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:provider/provider.dart';
 import '../models/mock_data.dart';
+import '../providers/health_provider.dart';
 import '../providers/nutrition_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/workout_provider.dart';
@@ -26,6 +27,7 @@ class HomeScreen extends StatelessWidget {
     final user = context.watch<UserProvider>();
     final workouts = context.watch<WorkoutProvider>();
     final nutrition = context.watch<NutritionProvider>();
+    final health = context.watch<HealthProvider>();
     final recentLogs = workouts.logs.take(3).toList();
 
     return SafeArea(
@@ -38,17 +40,35 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 16),
           _buildNutritionCard(colors, nutrition),
           const SizedBox(height: 24),
+          if (health.status != HealthConnectionStatus.authorized)
+            _buildConnectWatchCard(colors, health)
+          else
+            _buildSyncStatusRow(colors, health),
+          const SizedBox(height: 14),
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: StatCard(
                   icon: Icons.directions_walk_rounded,
                   color: AppBrand.accentBlue,
-                  value: '7,842',
+                  value: health.steps?.toString() ?? '--',
                   label: 'Steps today',
                 ),
               ),
               const SizedBox(width: 14),
+              Expanded(
+                child: StatCard(
+                  icon: Icons.favorite_rounded,
+                  color: AppBrand.accentPink,
+                  value: health.heartRate != null ? '${health.heartRate!.round()} bpm' : '--',
+                  label: 'Heart rate',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
               Expanded(
                 child: GestureDetector(
                   onTap: () => context.read<UserProvider>().addWater(250),
@@ -61,11 +81,11 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 14),
-              const Expanded(
+              Expanded(
                 child: StatCard(
                   icon: Icons.bedtime_rounded,
                   color: AppBrand.secondary,
-                  value: '7h 20m',
+                  value: health.sleepLabel,
                   label: 'Sleep',
                 ),
               ),
@@ -145,6 +165,90 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
           child: const Icon(Icons.person_rounded, color: Colors.white),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConnectWatchCard(AppPalette colors, HealthProvider health) {
+    final notInstalled = health.status == HealthConnectionStatus.notInstalled;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.cardBorder),
+        boxShadow: [BoxShadow(color: colors.shadow, blurRadius: 16, offset: const Offset(0, 6))],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(color: colors.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14)),
+            child: Icon(Icons.watch_rounded, color: colors.primary, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Connect your watch', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+                const SizedBox(height: 2),
+                Text(
+                  notInstalled
+                      ? 'Install Health Connect to bring in steps, heart rate & sleep from Zepp.'
+                      : 'Pull steps, heart rate & sleep synced from Zepp (Amazfit) via Health Connect.',
+                  style: TextStyle(fontSize: 11.5, color: colors.textSecondary, height: 1.3),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: () => health.connect(),
+            style: TextButton.styleFrom(
+              backgroundColor: colors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text(notInstalled ? 'Install' : 'Connect', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSyncStatusRow(AppPalette colors, HealthProvider health) {
+    String label;
+    if (health.isSyncing) {
+      label = 'Syncing with your watch…';
+    } else if (health.lastSynced != null) {
+      final mins = DateTime.now().difference(health.lastSynced!).inMinutes;
+      label = mins < 1 ? 'Synced just now' : 'Synced ${mins}m ago';
+    } else {
+      label = 'Not synced yet';
+    }
+
+    return Row(
+      children: [
+        Icon(Icons.watch_rounded, size: 14, color: colors.textSecondary),
+        const SizedBox(width: 6),
+        Expanded(child: Text(label, style: TextStyle(fontSize: 12, color: colors.textSecondary))),
+        GestureDetector(
+          onTap: health.isSyncing ? null : () => health.syncNow(),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (health.isSyncing)
+                SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: colors.primary))
+              else
+                Icon(Icons.refresh_rounded, size: 14, color: colors.primary),
+              const SizedBox(width: 4),
+              Text('Sync now', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: colors.primary)),
+            ],
+          ),
         ),
       ],
     );
