@@ -25,8 +25,8 @@ subprojects {
 // metadata check imposed by flutter_plugin_android_lifecycle, which requires
 // consumers to compile against SDK 36 or later.
 subprojects {
-    afterEvaluate {
-        val androidExtension = project.extensions.findByName("android") ?: return@afterEvaluate
+    fun forceCompileSdk(target: Project) {
+        val androidExtension = target.extensions.findByName("android") ?: return
         val methods = androidExtension.javaClass.methods
         val setCompileSdk = methods.firstOrNull {
             it.name == "setCompileSdk" && it.parameterTypes.size == 1 &&
@@ -41,6 +41,15 @@ subprojects {
                     it.parameterTypes[0] == Int::class.javaPrimitiveType
             }?.invoke(androidExtension, 36)
         }
+    }
+    // `:app` is evaluated eagerly (via evaluationDependsOn above), so calling
+    // afterEvaluate on it would fail with "project is already evaluated".
+    // Guard by configuring already-evaluated projects immediately and only
+    // deferring the rest.
+    if (state.executed) {
+        forceCompileSdk(project)
+    } else {
+        afterEvaluate { forceCompileSdk(project) }
     }
 }
 
