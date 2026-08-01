@@ -1,11 +1,15 @@
+import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:provider/provider.dart';
+import '../models/food_item.dart';
 import '../models/food_log.dart';
+import '../models/food_recommendation.dart';
 import '../models/indian_foods.dart';
 import '../models/nutrition_targets.dart';
+import '../providers/food_catalog_provider.dart';
 import '../providers/nutrition_provider.dart';
 import '../providers/user_provider.dart';
 import '../theme/app_theme.dart';
@@ -22,6 +26,7 @@ class DietScreen extends StatelessWidget {
     final colors = context.colors;
     final nutrition = context.watch<NutritionProvider>();
     final user = context.watch<UserProvider>();
+    final catalog = context.watch<FoodCatalogProvider>();
     final totals = nutrition.selectedTotals;
     final targets = NutritionTargets.forUser(user);
     final byMeal = nutrition.selectedByMeal;
@@ -68,9 +73,20 @@ class DietScreen extends StatelessWidget {
             const SizedBox(height: 16),
             _SugarCaffeineCard(colors: colors, totals: totals, targets: targets),
             const SizedBox(height: 16),
-            _GlucoseCard(colors: colors, nutrition: nutrition, isToday: isToday),
+            _GlucoseCard(colors: colors, nutrition: nutrition, isToday: isToday, isDiabetic: user.isDiabetic),
             const SizedBox(height: 16),
             _MicroCard(colors: colors, totals: totals, targets: targets),
+            if (isToday) ...[
+              const SizedBox(height: 16),
+              _RecommendationsCard(
+                colors: colors,
+                totals: totals,
+                targets: targets,
+                catalog: catalog.allItems,
+                diabetic: user.isDiabetic,
+                consumedToday: nutrition.selectedLogs,
+              ),
+            ],
             const SizedBox(height: 26),
             if (byMeal.isEmpty)
               _EmptyState(colors: colors, isToday: isToday)
@@ -401,12 +417,18 @@ class _GlucoseCard extends StatelessWidget {
   final AppPalette colors;
   final NutritionProvider nutrition;
   final bool isToday;
+  final bool isDiabetic;
 
-  const _GlucoseCard({required this.colors, required this.nutrition, required this.isToday});
+  const _GlucoseCard({
+    required this.colors,
+    required this.nutrition,
+    required this.isToday,
+    required this.isDiabetic,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final curve = nutrition.glucoseCurve;
+    final curve = nutrition.glucoseCurve(diabetic: isDiabetic);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
@@ -456,9 +478,9 @@ class _GlucoseCard extends StatelessWidget {
           else ...[
             Row(
               children: [
-                _stat(isToday ? 'Now' : 'End of day', '${nutrition.currentGlucose.round()}', 'mg/dL', colors.primary),
+                _stat(isToday ? 'Now' : 'End of day', '${nutrition.currentGlucose(diabetic: isDiabetic).round()}', 'mg/dL', colors.primary),
                 const SizedBox(width: 20),
-                _stat('Peak', '${nutrition.peakGlucose.round()}', 'mg/dL', AppBrand.carbs),
+                _stat('Peak', '${nutrition.peakGlucose(diabetic: isDiabetic).round()}', 'mg/dL', AppBrand.carbs),
               ],
             ),
             const SizedBox(height: 16),
@@ -475,7 +497,7 @@ class _GlucoseCard extends StatelessWidget {
   }
 
   Widget _statusChip() {
-    final status = nutrition.glucoseStatus;
+    final status = nutrition.glucoseStatus(diabetic: isDiabetic);
     final spiking = status == 'Spiking' || status == 'Rising';
     final color = spiking ? AppBrand.accentOrange : AppBrand.fiber;
     return Container(
@@ -503,7 +525,9 @@ class _GlucoseCard extends StatelessWidget {
     final minX = curve.first.hour;
     final maxX = curve.last.hour;
     final maxLevel = curve.map((p) => p.level).reduce((a, b) => a > b ? a : b);
-    final maxY = (maxLevel + 15).clamp(120.0, 260.0);
+    // Floor of 120 keeps small ranges readable; no upper cap so a real spike
+    // is never clipped off the top of the chart.
+    final maxY = (maxLevel + 15).clamp(120.0, double.infinity);
 
     return LineChart(
       LineChartData(
@@ -550,10 +574,11 @@ class _GlucoseCard extends StatelessWidget {
             ),
           ),
         ),
-        // "In range" upper reference line at 140 mg/dL.
+        // "In range" upper reference line — 140 mg/dL for non-diabetics,
+        // the ADA postprandial target of 180 mg/dL for diabetics.
         extraLinesData: ExtraLinesData(horizontalLines: [
           HorizontalLine(
-            y: 140,
+            y: isDiabetic ? 180 : 140,
             color: AppBrand.accentOrange.withValues(alpha: 0.5),
             strokeWidth: 1,
             dashArray: [5, 5],
@@ -657,6 +682,272 @@ class _MicroBar extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _RecoSection {
+  final RecommendedNutrient nutrient;
+  final double remaining;
+  final List<FoodRecommendation> picks;
+  const _RecoSection(this.nutrient, this.remaining, this.picks);
+}
+
+class _RecommendationsCard extends StatefulWidget {
+  final AppPalette colors;
+  final NutritionTotals totals;
+  final NutritionTargets targets;
+  final List<FoodItem> catalog;
+  final bool diabetic;
+  final List<FoodLog> consumedToday;
+
+  const _RecommendationsCard({
+    required this.colors,
+    required this.totals,
+    required this.targets,
+    required this.catalog,
+    required this.diabetic,
+    required this.consumedToday,
+  });
+
+  static Color _colorFor(RecommendedNutrient n) => switch (n) {
+        RecommendedNutrient.protein => AppBrand.protein,
+        RecommendedNutrient.fiber => AppBrand.fiber,
+        RecommendedNutrient.iron => AppBrand.accentPink,
+        RecommendedNutrient.calcium => AppBrand.accentBlue,
+      };
+
+  static IconData _iconFor(RecommendedNutrient n) => switch (n) {
+        RecommendedNutrient.protein => Icons.fitness_center_rounded,
+        RecommendedNutrient.fiber => Icons.eco_rounded,
+        RecommendedNutrient.iron => Icons.bloodtype_rounded,
+        RecommendedNutrient.calcium => Icons.spa_rounded,
+      };
+
+  @override
+  State<_RecommendationsCard> createState() => _RecommendationsCardState();
+}
+
+class _RecommendationsCardState extends State<_RecommendationsCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = widget.colors;
+    final totals = widget.totals;
+    final targets = widget.targets;
+    final remainingCalories = math.max(0.0, targets.calories - totals.calories);
+
+    List<FoodRecommendation> picksFor(RecommendedNutrient nutrient, double remaining) =>
+        FoodRecommendationEngine.recommendFor(
+          nutrient: nutrient,
+          remainingAmount: remaining,
+          remainingCalories: remainingCalories,
+          catalog: widget.catalog,
+          diabetic: widget.diabetic,
+        );
+
+    // Only surface a nutrient once there's a meaningful amount of today's
+    // target left (>=15%) — avoids nagging once you're basically done.
+    _RecoSection? section(RecommendedNutrient nutrient, double achieved, double target) {
+      final remaining = math.max(0.0, target - achieved);
+      if (target <= 0 || remaining / target < 0.15) return null;
+      final picks = picksFor(nutrient, remaining);
+      if (picks.isEmpty) return null;
+      return _RecoSection(nutrient, remaining, picks);
+    }
+
+    final sections = [
+      section(RecommendedNutrient.protein, totals.protein, targets.protein.toDouble()),
+      section(RecommendedNutrient.fiber, totals.fiber, targets.fiber.toDouble()),
+      section(RecommendedNutrient.iron, totals.iron, targets.iron.toDouble()),
+      section(RecommendedNutrient.calcium, totals.calcium, targets.calcium.toDouble()),
+    ].whereType<_RecoSection>().toList();
+
+    if (sections.isEmpty) return const SizedBox.shrink();
+
+    final tipCount = sections.fold<int>(0, (s, sec) => s + sec.picks.length);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: colors.cardBorder),
+        boxShadow: [BoxShadow(color: colors.shadow, blurRadius: 16, offset: const Offset(0, 6))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Row(
+              children: [
+                Icon(Icons.recommend_rounded, size: 18, color: colors.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Finish Your Targets',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: colors.textPrimary)),
+                ),
+                if (!_expanded)
+                  Container(
+                    margin: const EdgeInsets.only(right: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                    decoration: BoxDecoration(color: colors.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+                    child: Text('$tipCount ideas', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: colors.primary)),
+                  ),
+                Icon(_expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded, color: colors.textSecondary),
+              ],
+            ),
+          ),
+          if (_expanded) ...[
+            const SizedBox(height: 4),
+            Text(
+              widget.diabetic
+                  ? 'Won\'t spike your sugar, and skips the oily stuff.'
+                  : 'Picks to close today\'s gaps without the oily stuff.',
+              style: TextStyle(fontSize: 11.5, color: colors.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            _ConsumedTodayView(logs: widget.consumedToday),
+            for (final s in sections) ...[
+              const SizedBox(height: 16),
+              _RecoSectionView(section: s, color: _RecommendationsCard._colorFor(s.nutrient), icon: _RecommendationsCard._iconFor(s.nutrient)),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ConsumedTodayView extends StatelessWidget {
+  final List<FoodLog> logs;
+
+  const _ConsumedTodayView({required this.logs});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final sorted = [...logs]..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Consumed today', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+        const SizedBox(height: 8),
+        if (sorted.isEmpty)
+          Text('Nothing logged yet today.', style: TextStyle(fontSize: 12.5, color: colors.textSecondary))
+        else
+          ...sorted.map((log) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle_rounded, size: 14, color: colors.textSecondary.withValues(alpha: 0.5)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(log.name,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: colors.textPrimary)),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(log.meal, style: TextStyle(fontSize: 11, color: colors.textSecondary)),
+                    const SizedBox(width: 8),
+                    Text('${log.calories.round()} kcal',
+                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: colors.textSecondary)),
+                  ],
+                ),
+              )),
+      ],
+    );
+  }
+}
+
+class _RecoSectionView extends StatelessWidget {
+  final _RecoSection section;
+  final Color color;
+  final IconData icon;
+
+  const _RecoSectionView({required this.section, required this.color, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final n = section.nutrient;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 15, color: color),
+            const SizedBox(width: 6),
+            Text('Boost your ${n.label.toLowerCase()}',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+            const Spacer(),
+            Text('${section.remaining.round()}${n.unit} left',
+                style: TextStyle(fontSize: 11.5, color: colors.textSecondary)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ...section.picks.map((p) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _RecoTile(rec: p, nutrient: n, color: color),
+            )),
+      ],
+    );
+  }
+}
+
+class _RecoTile extends StatelessWidget {
+  final FoodRecommendation rec;
+  final RecommendedNutrient nutrient;
+  final Color color;
+
+  const _RecoTile({required this.rec, required this.nutrient, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final f = rec.item;
+    return Material(
+      color: colors.background,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => showLogFoodSheet(context, f),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(f.name,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+                    const SizedBox(height: 2),
+                    Text(f.serving, style: TextStyle(fontSize: 11, color: colors.textSecondary)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('+${rec.amount.round()}${nutrient.unit}',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color)),
+                  const SizedBox(height: 2),
+                  Text('${(rec.fillPercent * 100).round()}% of goal',
+                      style: TextStyle(fontSize: 10, color: colors.textSecondary)),
+                ],
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.add_circle_rounded, color: colors.primary, size: 22),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

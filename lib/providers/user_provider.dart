@@ -54,6 +54,7 @@ class UserProvider extends ChangeNotifier {
   static const _kWaterGoal = 'user_water_goal_ml';
   static const _kWaterIntake = 'water_intake_ml';
   static const _kWaterDate = 'water_intake_date';
+  static const _kIsDiabetic = 'user_is_diabetic';
 
   bool _loading = true;
   bool _onboardingComplete = false;
@@ -67,6 +68,7 @@ class UserProvider extends ChangeNotifier {
   int _calorieGoal = 800;
   int _waterGoalMl = 2500;
   int _waterIntakeMl = 0;
+  bool _isDiabetic = false;
 
   bool get loading => _loading;
   bool get onboardingComplete => _onboardingComplete;
@@ -80,6 +82,7 @@ class UserProvider extends ChangeNotifier {
   int get calorieGoal => _calorieGoal;
   int get waterGoalMl => _waterGoalMl;
   int get waterIntakeMl => _waterIntakeMl;
+  bool get isDiabetic => _isDiabetic;
 
   double get bmi {
     final heightM = _heightCm / 100;
@@ -115,6 +118,7 @@ class UserProvider extends ChangeNotifier {
     );
     _calorieGoal = prefs.getInt(_kCalorieGoal) ?? _calorieGoal;
     _waterGoalMl = prefs.getInt(_kWaterGoal) ?? _waterGoalMl;
+    _isDiabetic = prefs.getBool(_kIsDiabetic) ?? _isDiabetic;
 
     final storedDate = prefs.getString(_kWaterDate);
     _waterIntakeMl = storedDate == _todayKey ? (prefs.getInt(_kWaterIntake) ?? 0) : 0;
@@ -163,6 +167,7 @@ class UserProvider extends ChangeNotifier {
     ActivityLevel? activity,
     int? calorieGoal,
     int? waterGoalMl,
+    bool? isDiabetic,
   }) async {
     _name = name ?? _name;
     _heightCm = heightCm ?? _heightCm;
@@ -173,6 +178,7 @@ class UserProvider extends ChangeNotifier {
     _activity = activity ?? _activity;
     _calorieGoal = calorieGoal ?? _calorieGoal;
     _waterGoalMl = waterGoalMl ?? _waterGoalMl;
+    _isDiabetic = isDiabetic ?? _isDiabetic;
     notifyListeners();
 
     final prefs = await SharedPreferences.getInstance();
@@ -185,6 +191,7 @@ class UserProvider extends ChangeNotifier {
     await prefs.setString(_kActivity, _activity.name);
     await prefs.setInt(_kCalorieGoal, _calorieGoal);
     await prefs.setInt(_kWaterGoal, _waterGoalMl);
+    await prefs.setBool(_kIsDiabetic, _isDiabetic);
   }
 
   Future<void> addWater(int ml) async {
