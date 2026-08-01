@@ -151,27 +151,32 @@ class ProfileScreen extends StatelessWidget {
     Widget target(IconData icon, Color color, String value, String label, double percent) => Expanded(
           child: Column(
             children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.14), shape: BoxShape.circle),
-                child: Icon(icon, color: color, size: 17),
+              SizedBox(
+                width: 46,
+                height: 46,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 46,
+                      height: 46,
+                      child: CircularProgressIndicator(
+                        value: percent,
+                        strokeWidth: 4,
+                        strokeCap: StrokeCap.round,
+                        backgroundColor: color.withValues(alpha: 0.14),
+                        valueColor: AlwaysStoppedAnimation(color),
+                      ),
+                    ),
+                    Icon(icon, color: color, size: 18),
+                  ],
+                ),
               ),
               const SizedBox(height: 8),
               Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: colors.textPrimary)),
               const SizedBox(height: 1),
               Text(label, style: TextStyle(fontSize: 10.5, color: colors.textSecondary)),
-              const SizedBox(height: 9),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: percent,
-                  minHeight: 5,
-                  backgroundColor: color.withValues(alpha: 0.14),
-                  valueColor: AlwaysStoppedAnimation(color),
-                ),
-              ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               Text('${(percent * 100).round()}%', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: color)),
             ],
           ),
