@@ -14,6 +14,7 @@ class HealthProvider extends ChangeNotifier {
     HealthDataType.HEART_RATE,
     HealthDataType.SLEEP_ASLEEP,
     HealthDataType.TOTAL_CALORIES_BURNED,
+    HealthDataType.ACTIVE_ENERGY_BURNED,
   ];
 
   final Health _health = Health();
@@ -118,16 +119,28 @@ class HealthProvider extends ChangeNotifier {
         (sum, p) => sum + p.dateTo.difference(p.dateFrom).inMinutes,
       );
 
-      final caloriePoints = await _health.getHealthDataFromTypes(
+      // Prefer TOTAL_CALORIES_BURNED (includes BMR), but some watches/apps
+      // (Zepp included) only sync active/exercise calories to Health Connect,
+      // so fall back to ACTIVE_ENERGY_BURNED when total isn't populated.
+      double? sumCalories(List<HealthDataPoint> points) {
+        final values = points.map((p) => p.value).whereType<NumericHealthValue>().map((v) => v.numericValue.toDouble());
+        return values.isEmpty ? null : values.reduce((a, b) => a + b);
+      }
+
+      final totalCaloriePoints = await _health.getHealthDataFromTypes(
         types: [HealthDataType.TOTAL_CALORIES_BURNED],
         startTime: startOfDay,
         endTime: now,
       );
-      final calorieValues = caloriePoints
-          .map((p) => p.value)
-          .whereType<NumericHealthValue>()
-          .map((v) => v.numericValue.toDouble());
-      final totalCalories = calorieValues.isEmpty ? null : calorieValues.reduce((a, b) => a + b);
+      var totalCalories = sumCalories(totalCaloriePoints);
+      if (totalCalories == null) {
+        final activeCaloriePoints = await _health.getHealthDataFromTypes(
+          types: [HealthDataType.ACTIVE_ENERGY_BURNED],
+          startTime: startOfDay,
+          endTime: now,
+        );
+        totalCalories = sumCalories(activeCaloriePoints);
+      }
 
       steps = stepsResult;
       heartRate = avgHeartRate;

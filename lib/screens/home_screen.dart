@@ -36,7 +36,7 @@ class HomeScreen extends StatelessWidget {
         children: [
           _buildHeader(colors, user.name),
           const SizedBox(height: 24),
-          _buildCalorieCard(colors, workouts, user),
+          _buildCalorieCard(colors, workouts, user, health),
           const SizedBox(height: 16),
           _buildNutritionCard(colors, nutrition),
           const SizedBox(height: 24),
@@ -290,9 +290,10 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCalorieCard(AppPalette colors, WorkoutProvider workouts, UserProvider user) {
+  Widget _buildCalorieCard(AppPalette colors, WorkoutProvider workouts, UserProvider user, HealthProvider health) {
     final goal = user.calorieGoal;
-    final burned = workouts.todayCalories;
+    final fromWatch = health.status == HealthConnectionStatus.authorized && health.caloriesBurned != null;
+    final burned = fromWatch ? health.caloriesBurned!.round() : workouts.todayCalories;
     final percent = goal == 0 ? 0.0 : (burned / goal).clamp(0.0, 1.0);
 
     return Container(
@@ -333,9 +334,9 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Calories burned',
-                  style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+                Text(
+                  fromWatch ? 'Calories burned · from your watch' : 'Calories burned',
+                  style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Text(
