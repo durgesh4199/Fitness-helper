@@ -224,7 +224,7 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Calculated from your age, sex, weight, height & activity. Bars show today\'s progress.',
+            'Calculated from your age, sex, weight, height & activity. Rings show today\'s progress.',
             style: TextStyle(fontSize: 11.5, color: colors.textSecondary, height: 1.35),
           ),
           const SizedBox(height: 22),
