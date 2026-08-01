@@ -560,14 +560,18 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
       inputFormatters: type == TextInputType.number
           ? [FilteringTextInputFormatter.digitsOnly]
           : null,
-      style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w600),
+      style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w600, fontSize: 14.5),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: colors.textSecondary),
-        floatingLabelStyle: TextStyle(color: colors.primary, fontWeight: FontWeight.w700),
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        floatingLabelStyle: TextStyle(color: colors.primary, fontWeight: FontWeight.w700, fontSize: 12),
         filled: true,
         fillColor: colors.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        // Asymmetric padding: the label always floats (fields start pre-filled),
+        // so it needs headroom above the value or the value text overlaps/spills
+        // past the bottom of the rounded pill.
+        contentPadding: const EdgeInsets.fromLTRB(16, 22, 16, 10),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
