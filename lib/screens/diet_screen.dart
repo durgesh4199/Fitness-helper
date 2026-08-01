@@ -509,7 +509,9 @@ class _GlucoseCard extends StatelessWidget {
     final minX = curve.first.hour;
     final maxX = curve.last.hour;
     final maxLevel = curve.map((p) => p.level).reduce((a, b) => a > b ? a : b);
-    final maxY = (maxLevel + 15).clamp(120.0, 260.0);
+    // Floor of 120 keeps small ranges readable; no upper cap so a real spike
+    // is never clipped off the top of the chart.
+    final maxY = (maxLevel + 15).clamp(120.0, double.infinity);
 
     return LineChart(
       LineChartData(
@@ -556,10 +558,11 @@ class _GlucoseCard extends StatelessWidget {
             ),
           ),
         ),
-        // "In range" upper reference line at 140 mg/dL.
+        // "In range" upper reference line — 140 mg/dL for non-diabetics,
+        // the ADA postprandial target of 180 mg/dL for diabetics.
         extraLinesData: ExtraLinesData(horizontalLines: [
           HorizontalLine(
-            y: 140,
+            y: isDiabetic ? 180 : 140,
             color: AppBrand.accentOrange.withValues(alpha: 0.5),
             strokeWidth: 1,
             dashArray: [5, 5],

@@ -241,8 +241,11 @@ class NutritionProvider extends ChangeNotifier {
     return curve.map((p) => p.level).reduce(math.max);
   }
 
+  /// Status reflects the day's *peak*, not just the current reading — a spike
+  /// that already happened and decayed back toward baseline by "now" should
+  /// still be flagged, not reported as "In range".
   String glucoseStatusForDate(DateTime date, {bool diabetic = false}) {
-    final g = glucoseNowOrEndForDate(date, diabetic: diabetic);
+    final g = peakGlucoseForDate(date, diabetic: diabetic);
     final baseline = _baselineFor(diabetic);
     final ceiling = _rangeCeilingFor(diabetic);
     if (g < baseline + 8) return 'Stable';
