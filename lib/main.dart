@@ -4,15 +4,17 @@ import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'providers/food_catalog_provider.dart';
 import 'providers/health_provider.dart';
+import 'providers/notification_provider.dart';
 import 'providers/nutrition_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/user_provider.dart';
 import 'providers/workout_provider.dart';
 import 'screens/main_shell.dart';
 import 'screens/onboarding_screen.dart';
+import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // sqflite only ships native implementations for Android/iOS/macOS. When
@@ -22,6 +24,8 @@ void main() {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
+
+  await NotificationService.instance.init();
 
   runApp(const FitnessTrackerApp());
 }
@@ -39,6 +43,7 @@ class FitnessTrackerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NutritionProvider()..load()),
         ChangeNotifierProvider(create: (_) => FoodCatalogProvider()..load()),
         ChangeNotifierProvider(create: (_) => HealthProvider()..init()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()..load()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {

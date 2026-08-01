@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/nutrition_targets.dart';
+import '../providers/notification_provider.dart';
 import '../providers/nutrition_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
@@ -42,7 +43,8 @@ class ProfileScreen extends StatelessWidget {
                 onTap: () => _showEditProfileSheet(context, user)),
             _SettingItem(Icons.flag_outlined, 'Fitness goals', colors.accentOrange,
                 onTap: () => _showEditProfileSheet(context, user)),
-            _SettingItem(Icons.notifications_none_rounded, 'Notifications', colors.accentBlue),
+            _SettingItem(Icons.notifications_none_rounded, 'Notifications', colors.accentBlue,
+                onTap: () => _showNotificationSettingsSheet(context)),
           ]),
           const SizedBox(height: 24),
           _sectionLabel(colors, 'Preferences'),
@@ -309,6 +311,120 @@ class ProfileScreen extends StatelessWidget {
       builder: (_) => _EditProfileSheet(user: user),
     );
   }
+
+  void _showNotificationSettingsSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _NotificationSettingsSheet(),
+    );
+  }
+}
+
+class _NotificationSettingsSheet extends StatelessWidget {
+  const _NotificationSettingsSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final notifications = context.watch<NotificationProvider>();
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        decoration: BoxDecoration(
+          color: colors.background,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: colors.textSecondary.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text('Notifications', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: colors.textPrimary)),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: colors.cardBorder),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Water reminders', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+                        const SizedBox(height: 2),
+                        Text(
+                          'A nudge to log water every few hours, 8am-10pm.',
+                          style: TextStyle(fontSize: 11.5, color: colors.textSecondary, height: 1.3),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: notifications.waterRemindersEnabled,
+                    activeThumbColor: colors.primary,
+                    onChanged: (v) => context.read<NotificationProvider>().setEnabled(v),
+                  ),
+                ],
+              ),
+            ),
+            if (notifications.permissionDenied) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Notification permission was denied. Enable it for this app in system settings to use reminders.',
+                style: TextStyle(fontSize: 11.5, color: Colors.redAccent),
+              ),
+            ],
+            if (notifications.waterRemindersEnabled) ...[
+              const SizedBox(height: 18),
+              Text('Remind me every', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: colors.textSecondary)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [1, 2, 3, 4].map((hours) {
+                  final selected = notifications.intervalHours == hours;
+                  return GestureDetector(
+                    onTap: () => context.read<NotificationProvider>().setIntervalHours(hours),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: selected ? colors.primary : colors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: selected ? colors.primary : colors.textSecondary.withValues(alpha: 0.18)),
+                      ),
+                      child: Text(
+                        '$hours hour${hours == 1 ? '' : 's'}',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: selected ? Colors.white : colors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ThemeSelector extends StatelessWidget {
@@ -573,7 +689,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
           ),
           Switch(
             value: _isDiabetic,
-            activeColor: colors.primary,
+            activeThumbColor: colors.primary,
             onChanged: (v) => setState(() => _isDiabetic = v),
           ),
         ],
