@@ -554,30 +554,34 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   }
 
   Widget _field(AppPalette colors, String label, TextEditingController controller, TextInputType type) {
-    return TextField(
-      controller: controller,
-      keyboardType: type,
-      inputFormatters: type == TextInputType.number
-          ? [FilteringTextInputFormatter.digitsOnly]
-          : null,
-      style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w600, fontSize: 14.5),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: colors.textSecondary),
-        floatingLabelBehavior: FloatingLabelBehavior.always,
-        floatingLabelStyle: TextStyle(color: colors.primary, fontWeight: FontWeight.w700, fontSize: 12),
-        filled: true,
-        fillColor: colors.surface,
-        // Asymmetric padding: the label always floats (fields start pre-filled),
-        // so it needs headroom above the value or the value text overlaps/spills
-        // past the bottom of the rounded pill.
-        contentPadding: const EdgeInsets.fromLTRB(16, 22, 16, 10),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: colors.primary, width: 1.5),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(color: colors.primary, fontWeight: FontWeight.w700, fontSize: 12),
         ),
-      ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          keyboardType: type,
+          inputFormatters: type == TextInputType.number
+              ? [FilteringTextInputFormatter.digitsOnly]
+              : null,
+          style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w600, fontSize: 14.5),
+          decoration: InputDecoration(
+            isDense: true,
+            filled: true,
+            fillColor: colors.surface,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: colors.primary, width: 1.5),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
