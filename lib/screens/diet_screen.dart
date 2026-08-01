@@ -68,7 +68,7 @@ class DietScreen extends StatelessWidget {
             const SizedBox(height: 16),
             _SugarCaffeineCard(colors: colors, totals: totals, targets: targets),
             const SizedBox(height: 16),
-            _GlucoseCard(colors: colors, nutrition: nutrition, isToday: isToday),
+            _GlucoseCard(colors: colors, nutrition: nutrition, isToday: isToday, isDiabetic: user.isDiabetic),
             const SizedBox(height: 16),
             _MicroCard(colors: colors, totals: totals, targets: targets),
             const SizedBox(height: 26),
@@ -401,12 +401,18 @@ class _GlucoseCard extends StatelessWidget {
   final AppPalette colors;
   final NutritionProvider nutrition;
   final bool isToday;
+  final bool isDiabetic;
 
-  const _GlucoseCard({required this.colors, required this.nutrition, required this.isToday});
+  const _GlucoseCard({
+    required this.colors,
+    required this.nutrition,
+    required this.isToday,
+    required this.isDiabetic,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final curve = nutrition.glucoseCurve;
+    final curve = nutrition.glucoseCurve(diabetic: isDiabetic);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
@@ -456,9 +462,9 @@ class _GlucoseCard extends StatelessWidget {
           else ...[
             Row(
               children: [
-                _stat(isToday ? 'Now' : 'End of day', '${nutrition.currentGlucose.round()}', 'mg/dL', colors.primary),
+                _stat(isToday ? 'Now' : 'End of day', '${nutrition.currentGlucose(diabetic: isDiabetic).round()}', 'mg/dL', colors.primary),
                 const SizedBox(width: 20),
-                _stat('Peak', '${nutrition.peakGlucose.round()}', 'mg/dL', AppBrand.carbs),
+                _stat('Peak', '${nutrition.peakGlucose(diabetic: isDiabetic).round()}', 'mg/dL', AppBrand.carbs),
               ],
             ),
             const SizedBox(height: 16),
@@ -475,7 +481,7 @@ class _GlucoseCard extends StatelessWidget {
   }
 
   Widget _statusChip() {
-    final status = nutrition.glucoseStatus;
+    final status = nutrition.glucoseStatus(diabetic: isDiabetic);
     final spiking = status == 'Spiking' || status == 'Rising';
     final color = spiking ? AppBrand.accentOrange : AppBrand.fiber;
     return Container(

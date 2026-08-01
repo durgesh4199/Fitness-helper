@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/nutrition_targets.dart';
+import '../providers/nutrition_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
 import '../theme/app_theme.dart';
@@ -13,6 +14,7 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final user = context.watch<UserProvider>();
+    final nutrition = context.watch<NutritionProvider>();
 
     return SafeArea(
       child: ListView(
@@ -27,7 +29,7 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 24),
           _buildStatsRow(colors, user),
           const SizedBox(height: 24),
-          _buildTargetsCard(colors, user),
+          _buildTargetsCard(colors, user, nutrition.todayTotals),
           const SizedBox(height: 28),
           _sectionLabel(colors, 'Appearance'),
           const SizedBox(height: 10),
@@ -141,10 +143,12 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTargetsCard(AppPalette colors, UserProvider user) {
+  Widget _buildTargetsCard(AppPalette colors, UserProvider user, NutritionTotals totals) {
     final t = NutritionTargets.forUser(user);
 
-    Widget target(IconData icon, Color color, String value, String label) => Expanded(
+    double pct(num achieved, num goal) => goal <= 0 ? 0.0 : (achieved / goal).clamp(0.0, 1.0);
+
+    Widget target(IconData icon, Color color, String value, String label, double percent) => Expanded(
           child: Column(
             children: [
               Icon(icon, color: color, size: 20),
@@ -152,6 +156,18 @@ class ProfileScreen extends StatelessWidget {
               Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: colors.textPrimary)),
               const SizedBox(height: 1),
               Text(label, style: TextStyle(fontSize: 10.5, color: colors.textSecondary)),
+              const SizedBox(height: 7),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: LinearProgressIndicator(
+                  value: percent,
+                  minHeight: 4,
+                  backgroundColor: color.withValues(alpha: 0.15),
+                  valueColor: AlwaysStoppedAnimation(color),
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text('${(percent * 100).round()}%', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: color)),
             ],
           ),
         );
@@ -182,25 +198,25 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Calculated from your age, sex, weight, height & activity.',
+            'Calculated from your age, sex, weight, height & activity. Bars show today\'s progress.',
             style: TextStyle(fontSize: 11.5, color: colors.textSecondary),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Row(
             children: [
-              target(Icons.local_fire_department_rounded, AppBrand.calories, '${t.calories}', 'kcal'),
-              target(Icons.fitness_center_rounded, AppBrand.protein, '${t.protein}g', 'Protein'),
-              target(Icons.grain_rounded, AppBrand.carbs, '${t.carbs}g', 'Carbs'),
-              target(Icons.water_drop_rounded, AppBrand.fat, '${t.fat}g', 'Fat'),
+              target(Icons.local_fire_department_rounded, AppBrand.calories, '${t.calories}', 'kcal', pct(totals.calories, t.calories)),
+              target(Icons.fitness_center_rounded, AppBrand.protein, '${t.protein}g', 'Protein', pct(totals.protein, t.protein)),
+              target(Icons.grain_rounded, AppBrand.carbs, '${t.carbs}g', 'Carbs', pct(totals.carbs, t.carbs)),
+              target(Icons.water_drop_rounded, AppBrand.fat, '${t.fat}g', 'Fat', pct(totals.fat, t.fat)),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Row(
             children: [
-              target(Icons.eco_rounded, AppBrand.fiber, '${t.fiber}g', 'Fiber'),
-              target(Icons.bloodtype_rounded, AppBrand.accentPink, '${t.iron}mg', 'Iron'),
-              target(Icons.spa_rounded, AppBrand.accentBlue, '${t.calcium}mg', 'Calcium'),
-              target(Icons.local_drink_rounded, AppBrand.accentBlue, '${(t.waterMl / 1000).toStringAsFixed(1)}L', 'Water'),
+              target(Icons.eco_rounded, AppBrand.fiber, '${t.fiber}g', 'Fiber', pct(totals.fiber, t.fiber)),
+              target(Icons.bloodtype_rounded, AppBrand.accentPink, '${t.iron}mg', 'Iron', pct(totals.iron, t.iron)),
+              target(Icons.spa_rounded, AppBrand.accentBlue, '${t.calcium}mg', 'Calcium', pct(totals.calcium, t.calcium)),
+              target(Icons.local_drink_rounded, AppBrand.accentBlue, '${(t.waterMl / 1000).toStringAsFixed(1)}L', 'Water', pct(user.waterIntakeMl, t.waterMl)),
             ],
           ),
         ],
@@ -342,6 +358,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   late final _ageController = TextEditingController(text: widget.user.age.toString());
   late Sex _sex = widget.user.sex;
   late ActivityLevel _activity = widget.user.activity;
+  late bool _isDiabetic = widget.user.isDiabetic;
 
   @override
   void dispose() {
@@ -362,6 +379,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
       age: int.tryParse(_ageController.text),
       sex: _sex,
       activity: _activity,
+      isDiabetic: _isDiabetic,
     );
     if (mounted) Navigator.of(context).pop();
   }
@@ -453,6 +471,8 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                         );
                       }).toList(),
                     ),
+                    const SizedBox(height: 16),
+                    _diabeticToggle(colors),
                   ],
                 ),
               ),
@@ -501,7 +521,39 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     );
   }
 
-  Widget _field(AppPalette colors, String hint, TextEditingController controller, TextInputType type) {
+  Widget _diabeticToggle(AppPalette colors) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Diabetic / pre-diabetic',
+                    style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+                const SizedBox(height: 2),
+                Text('Adjusts how we estimate your sugar response',
+                    style: TextStyle(fontSize: 11.5, color: colors.textSecondary)),
+              ],
+            ),
+          ),
+          Switch(
+            value: _isDiabetic,
+            activeColor: colors.primary,
+            onChanged: (v) => setState(() => _isDiabetic = v),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _field(AppPalette colors, String label, TextEditingController controller, TextInputType type) {
     return TextField(
       controller: controller,
       keyboardType: type,
@@ -510,8 +562,9 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
           : null,
       style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w600),
       decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: colors.textSecondary),
+        labelText: label,
+        labelStyle: TextStyle(color: colors.textSecondary),
+        floatingLabelStyle: TextStyle(color: colors.primary, fontWeight: FontWeight.w700),
         filled: true,
         fillColor: colors.surface,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
