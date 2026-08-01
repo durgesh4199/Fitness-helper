@@ -84,6 +84,7 @@ class DietScreen extends StatelessWidget {
                 targets: targets,
                 catalog: catalog.allItems,
                 diabetic: user.isDiabetic,
+                consumedToday: nutrition.selectedLogs,
               ),
             ],
             const SizedBox(height: 26),
@@ -692,12 +693,13 @@ class _RecoSection {
   const _RecoSection(this.nutrient, this.remaining, this.picks);
 }
 
-class _RecommendationsCard extends StatelessWidget {
+class _RecommendationsCard extends StatefulWidget {
   final AppPalette colors;
   final NutritionTotals totals;
   final NutritionTargets targets;
   final List<FoodItem> catalog;
   final bool diabetic;
+  final List<FoodLog> consumedToday;
 
   const _RecommendationsCard({
     required this.colors,
@@ -705,6 +707,7 @@ class _RecommendationsCard extends StatelessWidget {
     required this.targets,
     required this.catalog,
     required this.diabetic,
+    required this.consumedToday,
   });
 
   static Color _colorFor(RecommendedNutrient n) => switch (n) {
@@ -722,7 +725,17 @@ class _RecommendationsCard extends StatelessWidget {
       };
 
   @override
+  State<_RecommendationsCard> createState() => _RecommendationsCardState();
+}
+
+class _RecommendationsCardState extends State<_RecommendationsCard> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final colors = widget.colors;
+    final totals = widget.totals;
+    final targets = widget.targets;
     final remainingCalories = math.max(0.0, targets.calories - totals.calories);
 
     List<FoodRecommendation> picksFor(RecommendedNutrient nutrient, double remaining) =>
@@ -730,8 +743,8 @@ class _RecommendationsCard extends StatelessWidget {
           nutrient: nutrient,
           remainingAmount: remaining,
           remainingCalories: remainingCalories,
-          catalog: catalog,
-          diabetic: diabetic,
+          catalog: widget.catalog,
+          diabetic: widget.diabetic,
         );
 
     // Only surface a nutrient once there's a meaningful amount of today's
@@ -753,6 +766,8 @@ class _RecommendationsCard extends StatelessWidget {
 
     if (sections.isEmpty) return const SizedBox.shrink();
 
+    final tipCount = sections.fold<int>(0, (s, sec) => s + sec.picks.length);
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -764,26 +779,86 @@ class _RecommendationsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.recommend_rounded, size: 18, color: colors.primary),
-              const SizedBox(width: 8),
-              Text('Finish Your Targets', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: colors.textPrimary)),
-            ],
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Row(
+              children: [
+                Icon(Icons.recommend_rounded, size: 18, color: colors.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Finish Your Targets',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: colors.textPrimary)),
+                ),
+                if (!_expanded)
+                  Container(
+                    margin: const EdgeInsets.only(right: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                    decoration: BoxDecoration(color: colors.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+                    child: Text('$tipCount ideas', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: colors.primary)),
+                  ),
+                Icon(_expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded, color: colors.textSecondary),
+              ],
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            diabetic
-                ? 'Won\'t spike your sugar, and skips the oily stuff.'
-                : 'Picks to close today\'s gaps without the oily stuff.',
-            style: TextStyle(fontSize: 11.5, color: colors.textSecondary),
-          ),
-          for (final s in sections) ...[
+          if (_expanded) ...[
+            const SizedBox(height: 4),
+            Text(
+              widget.diabetic
+                  ? 'Won\'t spike your sugar, and skips the oily stuff.'
+                  : 'Picks to close today\'s gaps without the oily stuff.',
+              style: TextStyle(fontSize: 11.5, color: colors.textSecondary),
+            ),
             const SizedBox(height: 16),
-            _RecoSectionView(section: s, color: _colorFor(s.nutrient), icon: _iconFor(s.nutrient)),
+            _ConsumedTodayView(logs: widget.consumedToday),
+            for (final s in sections) ...[
+              const SizedBox(height: 16),
+              _RecoSectionView(section: s, color: _RecommendationsCard._colorFor(s.nutrient), icon: _RecommendationsCard._iconFor(s.nutrient)),
+            ],
           ],
         ],
       ),
+    );
+  }
+}
+
+class _ConsumedTodayView extends StatelessWidget {
+  final List<FoodLog> logs;
+
+  const _ConsumedTodayView({required this.logs});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final sorted = [...logs]..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Consumed today', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+        const SizedBox(height: 8),
+        if (sorted.isEmpty)
+          Text('Nothing logged yet today.', style: TextStyle(fontSize: 12.5, color: colors.textSecondary))
+        else
+          ...sorted.map((log) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle_rounded, size: 14, color: colors.textSecondary.withValues(alpha: 0.5)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(log.name,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: colors.textPrimary)),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(log.meal, style: TextStyle(fontSize: 11, color: colors.textSecondary)),
+                    const SizedBox(width: 8),
+                    Text('${log.calories.round()} kcal',
+                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: colors.textSecondary)),
+                  ],
+                ),
+              )),
+      ],
     );
   }
 }
