@@ -104,15 +104,22 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
 
   void _openLogSheet(BuildContext context, FoodItem food) {
     final navigator = Navigator.of(context);
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _LogFoodSheet(food: food),
-    ).then((saved) {
+    showLogFoodSheet(context, food).then((saved) {
       if (saved == true && mounted) navigator.pop();
     });
   }
+}
+
+/// Opens the servings/meal picker sheet to log [food], resolving to `true` if
+/// the user saved it. Shared with call sites outside [AddFoodScreen] (e.g.
+/// food recommendation cards) so they use the exact same log-food UI.
+Future<bool?> showLogFoodSheet(BuildContext context, FoodItem food) {
+  return showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => LogFoodSheet(food: food),
+  );
 }
 
 class _CatChip extends StatelessWidget {
@@ -231,15 +238,15 @@ class _FoodRow extends StatelessWidget {
   }
 }
 
-class _LogFoodSheet extends StatefulWidget {
+class LogFoodSheet extends StatefulWidget {
   final FoodItem food;
-  const _LogFoodSheet({required this.food});
+  const LogFoodSheet({super.key, required this.food});
 
   @override
-  State<_LogFoodSheet> createState() => _LogFoodSheetState();
+  State<LogFoodSheet> createState() => _LogFoodSheetState();
 }
 
-class _LogFoodSheetState extends State<_LogFoodSheet> {
+class _LogFoodSheetState extends State<LogFoodSheet> {
   double _servings = 1;
   late String _meal = _defaultMeal();
 

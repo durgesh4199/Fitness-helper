@@ -173,17 +173,26 @@ class NutritionProvider extends ChangeNotifier {
   // on the carbs/sugar/fiber of what was logged and when).
   // ---------------------------------------------------------------------------
 
-  /// Glycemic impact (peak mg/dL bump) a single food contributes. Sugar hits
-  /// faster/harder than complex carbs; fiber blunts the response. Diabetics
-  /// see a larger excursion for the same intake due to impaired insulin
-  /// response.
-  double _impact(FoodLog l, bool diabetic) {
-    final complexCarbs = math.max(0.0, l.carbs - l.sugar);
-    final raw = l.sugar * 1.1 + complexCarbs * 0.5;
-    final fiberDamping = 1 - math.min(0.5, l.fiber * 0.025);
+  /// Glycemic impact (peak mg/dL bump) a food's sugar/carbs/fiber contributes.
+  /// Sugar hits faster/harder than complex carbs; fiber blunts the response.
+  /// Diabetics see a larger excursion for the same intake due to impaired
+  /// insulin response. Static and public so food-recommendation scoring can
+  /// reuse the exact same model the Sugar Response chart is built from.
+  static double spikeImpact({
+    required double sugar,
+    required double carbs,
+    required double fiber,
+    bool diabetic = false,
+  }) {
+    final complexCarbs = math.max(0.0, carbs - sugar);
+    final raw = sugar * 1.1 + complexCarbs * 0.5;
+    final fiberDamping = 1 - math.min(0.5, fiber * 0.025);
     final sensitivity = diabetic ? _diabeticSensitivity : 1.0;
     return raw * fiberDamping * sensitivity;
   }
+
+  double _impact(FoodLog l, bool diabetic) =>
+      spikeImpact(sugar: l.sugar, carbs: l.carbs, fiber: l.fiber, diabetic: diabetic);
 
   /// Spike kernel: 0 at intake, rises to 1 at [peakDelayMin], decays back.
   double _kernel(double minutesSince, double peakDelayMin) {
