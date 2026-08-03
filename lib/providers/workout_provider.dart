@@ -116,4 +116,10 @@ class WorkoutProvider extends ChangeNotifier {
     _logs = _logs.where((l) => l.id != id).toList();
     notifyListeners();
   }
+
+  /// Replaces all workout logs with [logs] — used when restoring a backup.
+  Future<void> restoreLogs(List<WorkoutLog> logs) async {
+    await _db.clearAndInsertWorkoutLogs(logs);
+    await load();
+  }
 }

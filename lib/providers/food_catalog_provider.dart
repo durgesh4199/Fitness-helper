@@ -66,6 +66,12 @@ class FoodCatalogProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Replaces all custom foods with [items] — used when restoring a backup.
+  Future<void> restoreCustomFoods(List<FoodItem> items) async {
+    await _db.clearAndInsertCustomFoods(items);
+    await load();
+  }
+
   // ---------------------------------------------------------------------------
   // CSV export / import
   // ---------------------------------------------------------------------------

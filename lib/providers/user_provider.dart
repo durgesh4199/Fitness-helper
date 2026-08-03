@@ -202,4 +202,42 @@ class UserProvider extends ChangeNotifier {
     await prefs.setInt(_kWaterIntake, _waterIntakeMl);
     await prefs.setString(_kWaterDate, _todayKey);
   }
+
+  /// Profile fields worth carrying across a backup. Excludes today's water
+  /// intake, which is transient day-to-day state, not a durable setting.
+  Map<String, Object?> toBackupMap() => {
+        'name': _name,
+        'heightCm': _heightCm,
+        'weightKg': _weightKg,
+        'goalWeightKg': _goalWeightKg,
+        'age': _age,
+        'sex': _sex.name,
+        'activity': _activity.name,
+        'calorieGoal': _calorieGoal,
+        'waterGoalMl': _waterGoalMl,
+        'isDiabetic': _isDiabetic,
+      };
+
+  /// Restores profile fields from a backup snapshot (see [toBackupMap]).
+  Future<void> restoreProfile(Map<String, Object?> data) async {
+    await updateProfile(
+      name: data['name'] as String?,
+      heightCm: (data['heightCm'] as num?)?.toDouble(),
+      weightKg: (data['weightKg'] as num?)?.toDouble(),
+      goalWeightKg: (data['goalWeightKg'] as num?)?.toDouble(),
+      age: (data['age'] as num?)?.toInt(),
+      sex: Sex.values.firstWhere((s) => s.name == data['sex'], orElse: () => _sex),
+      activity: ActivityLevel.values.firstWhere((a) => a.name == data['activity'], orElse: () => _activity),
+      calorieGoal: (data['calorieGoal'] as num?)?.toInt(),
+      waterGoalMl: (data['waterGoalMl'] as num?)?.toInt(),
+      isDiabetic: data['isDiabetic'] as bool?,
+    );
+
+    if (!_onboardingComplete) {
+      _onboardingComplete = true;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kOnboardingComplete, true);
+      notifyListeners();
+    }
+  }
 }

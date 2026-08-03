@@ -182,4 +182,36 @@ class DatabaseService {
     final db = await database;
     await db.delete('custom_foods', where: 'id = ?', whereArgs: [id]);
   }
+
+  // ---- Bulk replace, used by backup restore ----
+
+  Future<void> clearAndInsertWorkoutLogs(List<WorkoutLog> logs) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('workout_logs');
+      for (final log in logs) {
+        await txn.insert('workout_logs', log.toMap()..remove('id'));
+      }
+    });
+  }
+
+  Future<void> clearAndInsertFoodLogs(List<FoodLog> logs) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('food_logs');
+      for (final log in logs) {
+        await txn.insert('food_logs', log.toMap()..remove('id'));
+      }
+    });
+  }
+
+  Future<void> clearAndInsertCustomFoods(List<FoodItem> items) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('custom_foods');
+      for (final item in items) {
+        await txn.insert('custom_foods', item.toMap()..remove('id'));
+      }
+    });
+  }
 }
