@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'diet_screen.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
 import 'progress_screen.dart';
 import 'workouts_screen.dart';
+import '../providers/food_catalog_provider.dart';
+import '../providers/nutrition_provider.dart';
+import '../providers/user_provider.dart';
+import '../providers/workout_provider.dart';
+import '../services/backup_service.dart';
 import '../theme/app_theme.dart';
 
 class MainShell extends StatefulWidget {
@@ -31,6 +37,23 @@ class _MainShellState extends State<MainShell> {
     (icon: Icons.bar_chart_rounded, label: 'Progress'),
     (icon: Icons.person_rounded, label: 'Profile'),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoBackup());
+  }
+
+  Future<void> _maybeAutoBackup() async {
+    if (!await BackupService.isAutoBackupDue()) return;
+    if (!mounted) return;
+    await BackupService.shareBackup(
+      user: context.read<UserProvider>(),
+      workouts: context.read<WorkoutProvider>(),
+      nutrition: context.read<NutritionProvider>(),
+      catalog: context.read<FoodCatalogProvider>(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

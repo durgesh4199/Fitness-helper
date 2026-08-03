@@ -291,4 +291,10 @@ class NutritionProvider extends ChangeNotifier {
     _logs = _logs.where((l) => l.id != id).toList();
     notifyListeners();
   }
+
+  /// Replaces all food logs with [logs] — used when restoring a backup.
+  Future<void> restoreLogs(List<FoodLog> logs) async {
+    await _db.clearAndInsertFoodLogs(logs);
+    await load();
+  }
 }

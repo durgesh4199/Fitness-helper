@@ -1,11 +1,15 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/nutrition_targets.dart';
+import '../providers/food_catalog_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/nutrition_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
+import '../providers/workout_provider.dart';
+import '../services/backup_service.dart';
 import '../theme/app_theme.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -46,6 +50,10 @@ class ProfileScreen extends StatelessWidget {
             _SettingItem(Icons.notifications_none_rounded, 'Notifications', colors.accentBlue,
                 onTap: () => _showNotificationSettingsSheet(context)),
           ]),
+          const SizedBox(height: 24),
+          _sectionLabel(colors, 'Data'),
+          const SizedBox(height: 10),
+          const _BackupSection(),
           const SizedBox(height: 24),
           _sectionLabel(colors, 'Preferences'),
           const SizedBox(height: 10),
@@ -737,4 +745,141 @@ class _SettingItem {
   final VoidCallback? onTap;
 
   const _SettingItem(this.icon, this.label, this.color, {this.onTap});
+}
+
+class _BackupSection extends StatefulWidget {
+  const _BackupSection();
+
+  @override
+  State<_BackupSection> createState() => _BackupSectionState();
+}
+
+class _BackupSectionState extends State<_BackupSection> {
+  DateTime? _lastBackup;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    final t = await BackupService.lastBackupAt();
+    if (mounted) {
+      setState(() {
+        _lastBackup = t;
+        _loaded = true;
+      });
+    }
+  }
+
+  String get _label {
+    if (_lastBackup == null) return _loaded ? 'Never backed up' : 'Checking backup status…';
+    final days = DateTime.now().difference(_lastBackup!).inDays;
+    if (days <= 0) return 'Backed up today';
+    if (days == 1) return 'Backed up yesterday';
+    return 'Backed up $days days ago';
+  }
+
+  Future<void> _backupNow() async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(const SnackBar(content: Text('Preparing backup…'), duration: Duration(seconds: 2)));
+    await BackupService.shareBackup(
+      user: context.read<UserProvider>(),
+      workouts: context.read<WorkoutProvider>(),
+      nutrition: context.read<NutritionProvider>(),
+      catalog: context.read<FoodCatalogProvider>(),
+    );
+    await _refresh();
+  }
+
+  Future<void> _restore() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['json']);
+    final path = result?.files.single.path;
+    if (path == null || !mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Restore backup?'),
+        content: const Text(
+          'This replaces all your current workouts, food logs, custom foods, and '
+          'profile settings with what\'s in this backup file. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Restore')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await BackupService.restoreFromFile(
+        path: path,
+        user: context.read<UserProvider>(),
+        workouts: context.read<WorkoutProvider>(),
+        nutrition: context.read<NutritionProvider>(),
+        catalog: context.read<FoodCatalogProvider>(),
+      );
+      messenger.showSnackBar(const SnackBar(content: Text('Backup restored.')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Restore failed: $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8, left: 2),
+          child: Text(_label, style: TextStyle(fontSize: 11.5, color: colors.textSecondary)),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [BoxShadow(color: colors.shadow, blurRadius: 16, offset: const Offset(0, 6))],
+          ),
+          child: Material(
+            color: colors.surface,
+            clipBehavior: Clip.antiAlias,
+            borderRadius: BorderRadius.circular(20),
+            child: Column(
+              children: [
+                ListTile(
+                  onTap: _backupNow,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: colors.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                    child: Icon(Icons.backup_rounded, color: colors.primary, size: 20),
+                  ),
+                  title: Text('Back up now', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: colors.textPrimary)),
+                  trailing: Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Divider(height: 1, color: colors.background),
+                ),
+                ListTile(
+                  onTap: _restore,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                    child: Icon(Icons.restore_rounded, color: colors.accentOrange, size: 20),
+                  ),
+                  title: Text('Restore from backup', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: colors.textPrimary)),
+                  trailing: Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
