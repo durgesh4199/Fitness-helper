@@ -8,6 +8,7 @@ import '../models/nutrition_targets.dart';
 import '../models/weight_log.dart';
 import '../providers/body_measurement_provider.dart';
 import '../providers/food_catalog_provider.dart';
+import '../providers/health_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/nutrition_provider.dart';
 import '../providers/theme_provider.dart';
@@ -15,6 +16,7 @@ import '../providers/user_provider.dart';
 import '../providers/weight_provider.dart';
 import '../providers/workout_provider.dart';
 import '../services/backup_service.dart';
+import '../services/health_report_service.dart';
 import '../theme/app_theme.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -63,6 +65,11 @@ class ProfileScreen extends StatelessWidget {
           _sectionLabel(colors, 'Data'),
           const SizedBox(height: 10),
           const _BackupSection(),
+          const SizedBox(height: 14),
+          _settingsGroup(context, colors, [
+            _SettingItem(Icons.picture_as_pdf_outlined, 'Export health summary (PDF)', colors.secondary,
+                onTap: () => _shareHealthReport(context)),
+          ]),
           const SizedBox(height: 24),
           _sectionLabel(colors, 'Preferences'),
           const SizedBox(height: 10),
@@ -329,6 +336,23 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _shareHealthReport(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(const SnackBar(content: Text('Preparing health summary…'), duration: Duration(seconds: 2)));
+    try {
+      await HealthReportService.shareReport(
+        user: context.read<UserProvider>(),
+        weight: context.read<WeightProvider>(),
+        bodyMeasurements: context.read<BodyMeasurementProvider>(),
+        workouts: context.read<WorkoutProvider>(),
+        nutrition: context.read<NutritionProvider>(),
+        health: context.read<HealthProvider>(),
+      );
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Couldn\'t generate the summary: $e')));
+    }
+  }
+
   void _showNotificationSettingsSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -417,6 +441,68 @@ class _NotificationSettingsSheet extends StatelessWidget {
                   final selected = notifications.intervalHours == hours;
                   return GestureDetector(
                     onTap: () => context.read<NotificationProvider>().setIntervalHours(hours),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: selected ? colors.primary : colors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: selected ? colors.primary : colors.textSecondary.withValues(alpha: 0.18)),
+                      ),
+                      child: Text(
+                        '$hours hour${hours == 1 ? '' : 's'}',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: selected ? Colors.white : colors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: colors.cardBorder),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Movement reminders', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+                        const SizedBox(height: 2),
+                        Text(
+                          'A periodic nudge to take a short walk or stretch, 9am-9pm. Not based on actually detecting inactivity.',
+                          style: TextStyle(fontSize: 11.5, color: colors.textSecondary, height: 1.3),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: notifications.movementRemindersEnabled,
+                    activeThumbColor: colors.primary,
+                    onChanged: (v) => context.read<NotificationProvider>().setMovementEnabled(v),
+                  ),
+                ],
+              ),
+            ),
+            if (notifications.movementRemindersEnabled) ...[
+              const SizedBox(height: 18),
+              Text('Remind me every', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: colors.textSecondary)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [1, 2, 3, 4].map((hours) {
+                  final selected = notifications.movementIntervalHours == hours;
+                  return GestureDetector(
+                    onTap: () => context.read<NotificationProvider>().setMovementIntervalHours(hours),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       decoration: BoxDecoration(

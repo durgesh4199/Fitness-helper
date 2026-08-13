@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/daily_health_log.dart';
+import '../services/database_service.dart';
 
 enum HealthConnectionStatus { unknown, notInstalled, notAuthorized, authorized }
 
@@ -18,6 +20,7 @@ class HealthProvider extends ChangeNotifier {
   ];
 
   final Health _health = Health();
+  final DatabaseService _db = DatabaseService.instance;
 
   HealthConnectionStatus status = HealthConnectionStatus.unknown;
   bool isSyncing = false;
@@ -170,6 +173,11 @@ class HealthProvider extends ChangeNotifier {
       }
 
       await _saveCache();
+      // Record today's snapshot into history — this is what lets pattern/
+      // trend features look back further than just "today".
+      if (steps != null || sleepMinutes != null) {
+        await _db.upsertDailyHealthLog(DailyHealthLog(date: startOfDay, steps: steps, sleepMinutes: sleepMinutes));
+      }
     } catch (e) {
       errorMessage = 'Sync failed: $e';
     } finally {
@@ -193,6 +201,11 @@ class HealthProvider extends ChangeNotifier {
     if (dailyTotals.isEmpty) return null;
     return dailyTotals.reduce((a, b) => a + b) / dailyTotals.length;
   }
+
+  /// Full recorded daily-history — newest first. Used by trend/pattern
+  /// features; the live fields above (`steps`, `sleepMinutes`, …) remain
+  /// the fast path for "today".
+  Future<List<DailyHealthLog>> history() => _db.getAllDailyHealthLogs();
 
   Future<void> _loadCache() async {
     final prefs = await SharedPreferences.getInstance();

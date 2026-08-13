@@ -54,15 +54,15 @@ class IndianFoods {
     FoodItem(name: 'Plain Paratha', category: 'Grains & Breads', serving: '1 piece', calories: 260, protein: 5, carbs: 36, fiber: 3, fat: 10, sugar: 1, iron: 1.6, calcium: 20),
     FoodItem(name: 'Poha', category: 'Grains & Breads', serving: '1 bowl (150g)', calories: 250, protein: 5, carbs: 45, fiber: 2, fat: 6, sugar: 2, iron: 2.7, calcium: 20, vitaminC: 6),
     FoodItem(name: 'Upma', category: 'Grains & Breads', serving: '1 bowl (150g)', calories: 250, protein: 6, carbs: 40, fiber: 3, fat: 8, sugar: 1, iron: 1.5, calcium: 25),
-    FoodItem(name: 'Idli', category: 'Grains & Breads', serving: '2 pieces', calories: 140, protein: 5, carbs: 28, fiber: 1, fat: 1, sugar: 0.5, iron: 1.2, calcium: 15),
-    FoodItem(name: 'Plain Dosa', category: 'Grains & Breads', serving: '1 piece', calories: 165, protein: 4, carbs: 25, fiber: 1, fat: 5, sugar: 1, iron: 1.3, calcium: 14),
+    FoodItem(name: 'Idli', category: 'Grains & Breads', serving: '2 pieces', calories: 140, protein: 5, carbs: 28, fiber: 1, fat: 1, sugar: 0.5, iron: 1.2, calcium: 15, magnesium: 30, potassium: 75, zinc: 0.75),
+    FoodItem(name: 'Plain Dosa', category: 'Grains & Breads', serving: '1 piece', calories: 165, protein: 4, carbs: 25, fiber: 1, fat: 5, sugar: 1, iron: 1.3, calcium: 14, magnesium: 12, potassium: 36, zinc: 0.3),
     FoodItem(name: 'Masala Dosa', category: 'Grains & Breads', serving: '1 piece', calories: 300, protein: 6, carbs: 45, fiber: 3, fat: 11, sugar: 3, iron: 2.1, calcium: 22, vitaminC: 8),
 
     // ---- Dals & Legumes ----
     FoodItem(name: 'Toor / Yellow Dal', category: 'Dals & Legumes', serving: '1 bowl (150g)', calories: 150, protein: 9, carbs: 20, fiber: 5, fat: 4, sugar: 2, iron: 2.4, calcium: 30, magnesium: 54, potassium: 554, zinc: 1.5),
     FoodItem(name: 'Moong Dal', category: 'Dals & Legumes', serving: '1 bowl (150g)', calories: 150, protein: 10, carbs: 20, fiber: 6, fat: 3, sugar: 2, iron: 2.0, calcium: 28, magnesium: 72, potassium: 399, zinc: 1.3),
-    FoodItem(name: 'Rajma', category: 'Dals & Legumes', serving: '1 bowl (150g)', calories: 210, protein: 12, carbs: 30, fiber: 8, fat: 4, sugar: 3, iron: 3.0, calcium: 40, vitaminC: 3),
-    FoodItem(name: 'Chole', category: 'Dals & Legumes', serving: '1 bowl (150g)', calories: 260, protein: 11, carbs: 35, fiber: 9, fat: 8, sugar: 5, iron: 3.2, calcium: 55, vitaminC: 4),
+    FoodItem(name: 'Rajma', category: 'Dals & Legumes', serving: '1 bowl (150g)', calories: 210, protein: 12, carbs: 30, fiber: 8, fat: 4, sugar: 3, iron: 3.0, calcium: 40, vitaminC: 3, magnesium: 68, potassium: 605, zinc: 1.5),
+    FoodItem(name: 'Chole', category: 'Dals & Legumes', serving: '1 bowl (150g)', calories: 260, protein: 11, carbs: 35, fiber: 9, fat: 8, sugar: 5, iron: 3.2, calcium: 55, vitaminC: 4, magnesium: 72, potassium: 437, zinc: 2.3),
     FoodItem(name: 'Sambar', category: 'Dals & Legumes', serving: '1 bowl (150g)', calories: 140, protein: 6, carbs: 18, fiber: 5, fat: 4, sugar: 4, iron: 1.8, calcium: 35, vitaminC: 6),
 
     // ---- Vegetables ----
@@ -75,7 +75,7 @@ class IndianFoods {
     // ---- Dairy ----
     FoodItem(name: 'Milk (full cream)', category: 'Dairy', serving: '1 glass (250ml)', calories: 150, protein: 8, carbs: 12, fiber: 0, fat: 8, sugar: 12, calcium: 300, magnesium: 25, potassium: 375, zinc: 1.0),
     FoodItem(name: 'Curd / Dahi', category: 'Dairy', serving: '1 bowl (150g)', calories: 100, protein: 6, carbs: 8, fiber: 0, fat: 5, sugar: 6, calcium: 200, magnesium: 18, potassium: 233, zinc: 0.9),
-    FoodItem(name: 'Paneer', category: 'Dairy', serving: '100g', calories: 265, protein: 18, carbs: 6, fiber: 0, fat: 20, sugar: 2, calcium: 480),
+    FoodItem(name: 'Paneer', category: 'Dairy', serving: '100g', calories: 265, protein: 18, carbs: 6, fiber: 0, fat: 20, sugar: 2, calcium: 480, magnesium: 15, potassium: 90, zinc: 1.1),
     FoodItem(name: 'Sweet Lassi', category: 'Dairy', serving: '1 glass (250ml)', calories: 220, protein: 8, carbs: 30, fiber: 0, fat: 7, sugar: 28, calcium: 250),
     FoodItem(name: 'Ghee', category: 'Dairy', serving: '1 tbsp (14g)', calories: 112, protein: 0, carbs: 0, fiber: 0, fat: 12.5, sugar: 0),
 
@@ -91,21 +91,21 @@ class IndianFoods {
     FoodItem(name: 'Egg Curry', category: 'Non-Veg', serving: '2 eggs (bowl)', calories: 280, protein: 14, carbs: 8, fiber: 2, fat: 20, sugar: 4, iron: 2.4, calcium: 70, vitaminC: 4),
     FoodItem(name: 'Chicken Curry', category: 'Non-Veg', serving: '1 bowl (150g)', calories: 300, protein: 25, carbs: 8, fiber: 2, fat: 18, sugar: 3, iron: 1.8, calcium: 40),
     FoodItem(name: 'Fish Curry', category: 'Non-Veg', serving: '1 bowl (150g)', calories: 250, protein: 22, carbs: 6, fiber: 1, fat: 15, sugar: 2, iron: 1.4, calcium: 60),
-    FoodItem(name: 'Tandoori Chicken', category: 'Non-Veg', serving: '2 pieces', calories: 300, protein: 30, carbs: 4, fiber: 0, fat: 18, sugar: 2, iron: 1.5, calcium: 30),
+    FoodItem(name: 'Tandoori Chicken', category: 'Non-Veg', serving: '2 pieces', calories: 300, protein: 30, carbs: 4, fiber: 0, fat: 18, sugar: 2, iron: 1.5, calcium: 30, magnesium: 45, potassium: 450, zinc: 1.8),
 
     // ---- Fruits ----
     FoodItem(name: 'Banana', category: 'Fruits', serving: '1 medium', calories: 105, protein: 1.3, carbs: 27, fiber: 3, fat: 0.4, sugar: 14, iron: 0.3, calcium: 6, vitaminC: 10, magnesium: 32, potassium: 422, zinc: 0.2),
     FoodItem(name: 'Apple', category: 'Fruits', serving: '1 medium', calories: 95, protein: 0.5, carbs: 25, fiber: 4, fat: 0.3, sugar: 19, calcium: 11, vitaminC: 8, magnesium: 9, potassium: 195, zinc: 0.1),
-    FoodItem(name: 'Mango', category: 'Fruits', serving: '1 cup (165g)', calories: 100, protein: 1, carbs: 25, fiber: 3, fat: 0.6, sugar: 23, calcium: 18, vitaminC: 60),
+    FoodItem(name: 'Mango', category: 'Fruits', serving: '1 cup (165g)', calories: 100, protein: 1, carbs: 25, fiber: 3, fat: 0.6, sugar: 23, calcium: 18, vitaminC: 60, magnesium: 17, potassium: 277, zinc: 0.15),
     FoodItem(name: 'Orange', category: 'Fruits', serving: '1 medium', calories: 62, protein: 1.2, carbs: 15, fiber: 3, fat: 0.2, sugar: 12, calcium: 52, vitaminC: 70, magnesium: 13, potassium: 237, zinc: 0.1),
-    FoodItem(name: 'Papaya', category: 'Fruits', serving: '1 cup (145g)', calories: 55, protein: 0.9, carbs: 14, fiber: 2.5, fat: 0.2, sugar: 8, calcium: 30, vitaminC: 88),
+    FoodItem(name: 'Papaya', category: 'Fruits', serving: '1 cup (145g)', calories: 55, protein: 0.9, carbs: 14, fiber: 2.5, fat: 0.2, sugar: 8, calcium: 30, vitaminC: 88, magnesium: 15, potassium: 264, zinc: 0.12),
 
     // ---- Beverages ----
-    FoodItem(name: 'Masala Chai', category: 'Beverages', serving: '1 cup (150ml)', calories: 90, protein: 2, carbs: 12, fiber: 0, fat: 3, sugar: 10, calcium: 80, caffeine: 40),
-    FoodItem(name: 'Filter Coffee', category: 'Beverages', serving: '1 cup (150ml)', calories: 80, protein: 2, carbs: 10, fiber: 0, fat: 3, sugar: 8, calcium: 70, caffeine: 80),
+    FoodItem(name: 'Masala Chai', category: 'Beverages', serving: '1 cup (150ml)', calories: 90, protein: 2, carbs: 12, fiber: 0, fat: 3, sugar: 10, calcium: 80, caffeine: 40, magnesium: 6, potassium: 90, zinc: 0.2),
+    FoodItem(name: 'Filter Coffee', category: 'Beverages', serving: '1 cup (150ml)', calories: 80, protein: 2, carbs: 10, fiber: 0, fat: 3, sugar: 8, calcium: 70, caffeine: 80, magnesium: 5, potassium: 80, zinc: 0.15),
     FoodItem(name: 'Black Coffee', category: 'Beverages', serving: '1 cup (150ml)', calories: 5, protein: 0.3, carbs: 0, fiber: 0, fat: 0, sugar: 0, caffeine: 95),
     FoodItem(name: 'Green Tea', category: 'Beverages', serving: '1 cup (150ml)', calories: 2, protein: 0, carbs: 0, fiber: 0, fat: 0, sugar: 0, caffeine: 30),
-    FoodItem(name: 'Buttermilk / Chaas', category: 'Beverages', serving: '1 glass (250ml)', calories: 40, protein: 3, carbs: 4, fiber: 0, fat: 1.5, sugar: 3, calcium: 100),
+    FoodItem(name: 'Buttermilk / Chaas', category: 'Beverages', serving: '1 glass (250ml)', calories: 40, protein: 3, carbs: 4, fiber: 0, fat: 1.5, sugar: 3, calcium: 100, magnesium: 20, potassium: 250, zinc: 0.75),
 
     // ---- Sweets ----
     FoodItem(name: 'Gulab Jamun', category: 'Sweets', serving: '2 pieces', calories: 300, protein: 4, carbs: 45, fiber: 0, fat: 12, sugar: 40, calcium: 60),

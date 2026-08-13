@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:fitness_tracker/models/body_measurement_log.dart';
+import 'package:fitness_tracker/models/daily_health_log.dart';
 import 'package:fitness_tracker/models/food_item.dart';
 import 'package:fitness_tracker/models/food_log.dart';
 import 'package:fitness_tracker/models/water_log.dart';
@@ -39,6 +40,7 @@ void main() {
     for (final f in await db.getAllCustomFoods()) {
       if (f.id != null) await db.deleteCustomFood(f.id!);
     }
+    await db.clearDailyHealthLogs();
   });
 
   test('weight log insert/read round-trip, defaulting source to userEntered', () async {
@@ -198,5 +200,33 @@ void main() {
     expect(all.first.magnesium, 40);
     expect(all.first.potassium, 200);
     expect(all.first.zinc, 1.1);
+  });
+
+  test('daily health log insert/read round-trip', () async {
+    await db.upsertDailyHealthLog(DailyHealthLog(date: DateTime(2026, 1, 1), steps: 8000, sleepMinutes: 420));
+
+    final all = await db.getAllDailyHealthLogs();
+    expect(all.length, 1);
+    expect(all.first.steps, 8000);
+    expect(all.first.sleepMinutes, 420);
+    expect(all.first.dateKey, '2026-01-01');
+  });
+
+  test('upsertDailyHealthLog replaces (not duplicates) the row for the same day', () async {
+    await db.upsertDailyHealthLog(DailyHealthLog(date: DateTime(2026, 1, 1), steps: 5000, sleepMinutes: 300));
+    await db.upsertDailyHealthLog(DailyHealthLog(date: DateTime(2026, 1, 1), steps: 9000, sleepMinutes: 480));
+
+    final all = await db.getAllDailyHealthLogs();
+    expect(all.length, 1);
+    expect(all.first.steps, 9000);
+    expect(all.first.sleepMinutes, 480);
+  });
+
+  test('different days get separate rows', () async {
+    await db.upsertDailyHealthLog(DailyHealthLog(date: DateTime(2026, 1, 1), steps: 5000));
+    await db.upsertDailyHealthLog(DailyHealthLog(date: DateTime(2026, 1, 2), steps: 6000));
+
+    final all = await db.getAllDailyHealthLogs();
+    expect(all.length, 2);
   });
 }

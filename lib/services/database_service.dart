@@ -1,6 +1,7 @@
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import '../models/body_measurement_log.dart';
+import '../models/daily_health_log.dart';
 import '../models/food_item.dart';
 import '../models/food_log.dart';
 import '../models/weight_log.dart';
@@ -22,7 +23,7 @@ class DatabaseService {
     final path = join(await getDatabasesPath(), 'fitness_tracker.db');
     return openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: (db, version) async {
         await db.execute(_createWorkoutLogs);
         await db.execute(_createFoodLogs);
@@ -30,6 +31,7 @@ class DatabaseService {
         await db.execute(_createWeightLogs);
         await db.execute(_createWaterLogs);
         await db.execute(_createBodyMeasurementLogs);
+        await db.execute(_createDailyHealthLogs);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -62,6 +64,10 @@ class DatabaseService {
             await db.execute('ALTER TABLE $table ADD COLUMN potassium REAL');
             await db.execute('ALTER TABLE $table ADD COLUMN zinc REAL');
           }
+        }
+        if (oldVersion < 8) {
+          // Additive only — existing tables/data are untouched.
+          await db.execute(_createDailyHealthLogs);
         }
       },
     );
@@ -192,6 +198,20 @@ class DatabaseService {
       hips_cm REAL,
       source TEXT NOT NULL DEFAULT 'userEntered',
       notes TEXT
+    )
+  ''';
+
+  // One row per calendar day of synced activity/sleep — upserted on each
+  // Health Connect sync, giving trend/pattern features real history instead
+  // of only "today". `date` is a plain YYYY-MM-DD string (not a timestamp)
+  // so the UNIQUE constraint naturally enforces one row per day.
+  static const _createDailyHealthLogs = '''
+    CREATE TABLE daily_health_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL UNIQUE,
+      steps INTEGER,
+      sleep_minutes INTEGER,
+      source TEXT NOT NULL DEFAULT 'healthConnect'
     )
   ''';
 
@@ -373,5 +393,24 @@ class DatabaseService {
         await txn.insert('body_measurement_logs', log.toMap()..remove('id'));
       }
     });
+  }
+
+  // ---- Daily health logs (steps/sleep history) ----
+
+  /// Inserts or replaces the row for this log's date — one row per day.
+  Future<void> upsertDailyHealthLog(DailyHealthLog log) async {
+    final db = await database;
+    await db.insert('daily_health_logs', log.toMap()..remove('id'), conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<DailyHealthLog>> getAllDailyHealthLogs() async {
+    final db = await database;
+    final rows = await db.query('daily_health_logs', orderBy: 'date DESC');
+    return rows.map(DailyHealthLog.fromMap).toList();
+  }
+
+  Future<void> clearDailyHealthLogs() async {
+    final db = await database;
+    await db.delete('daily_health_logs');
   }
 }

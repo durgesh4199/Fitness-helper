@@ -12,6 +12,11 @@ class NotificationService {
   static const _waterWindowStartHour = 8;
   static const _waterWindowEndHour = 22;
 
+  static const _movementChannelId = 'movement_reminders';
+  static const _movementNotificationIdBase = 200;
+  static const _movementWindowStartHour = 9;
+  static const _movementWindowEndHour = 21;
+
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
 
@@ -30,14 +35,19 @@ class NotificationService {
     );
 
     if (defaultTargetPlatform == TargetPlatform.android) {
-      await _plugin
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(const AndroidNotificationChannel(
-            _waterChannelId,
-            'Water reminders',
-            description: 'Reminders to log your water intake',
-            importance: Importance.defaultImportance,
-          ));
+      final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      await android?.createNotificationChannel(const AndroidNotificationChannel(
+        _waterChannelId,
+        'Water reminders',
+        description: 'Reminders to log your water intake',
+        importance: Importance.defaultImportance,
+      ));
+      await android?.createNotificationChannel(const AndroidNotificationChannel(
+        _movementChannelId,
+        'Movement reminders',
+        description: 'Reminders to take a short movement break',
+        importance: Importance.defaultImportance,
+      ));
     }
 
     _initialized = true;
@@ -84,6 +94,54 @@ class NotificationService {
         id: id++,
         title: 'Time to hydrate 💧',
         body: 'Log a glass of water in Fitness Tracker to stay on track.',
+        scheduledDate: scheduled,
+        notificationDetails: details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+    }
+  }
+
+  // Movement/sedentary-break reminders. Note: these are plain scheduled
+  // reminders on a fixed interval, not real inactivity detection — the app
+  // has no way to sense whether you've actually been sitting still (that
+  // would need a continuously-running background activity-recognition
+  // service, well beyond a locally-scheduled notification). Framed as a
+  // periodic nudge, matching the spec's "make notifications configurable"
+  // guidance, not as "you've been inactive for N minutes".
+  Future<void> cancelMovementReminders() async {
+    for (var i = 0; i < 24; i++) {
+      await _plugin.cancel(id: _movementNotificationIdBase + i);
+    }
+  }
+
+  Future<void> scheduleMovementReminders(int intervalHours) async {
+    await cancelMovementReminders();
+    if (intervalHours <= 0) return;
+
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _movementChannelId,
+        'Movement reminders',
+        channelDescription: 'Reminders to take a short movement break',
+        importance: Importance.defaultImportance,
+        priority: Priority.defaultPriority,
+      ),
+      iOS: DarwinNotificationDetails(),
+    );
+
+    var id = _movementNotificationIdBase;
+    for (var hour = _movementWindowStartHour; hour <= _movementWindowEndHour; hour += intervalHours) {
+      final now = tz.TZDateTime.now(tz.local);
+      var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour);
+      if (scheduled.isBefore(now)) {
+        scheduled = scheduled.add(const Duration(days: 1));
+      }
+
+      await _plugin.zonedSchedule(
+        id: id++,
+        title: 'Stretch your legs 🚶',
+        body: 'A short walk or stretch break — good for a sedentary stretch of the day.',
         scheduledDate: scheduled,
         notificationDetails: details,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,

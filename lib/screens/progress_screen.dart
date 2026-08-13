@@ -2,6 +2,8 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../models/health_insight.dart';
+import '../providers/health_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/workout_provider.dart';
 import '../theme/app_theme.dart';
@@ -97,6 +99,8 @@ class ProgressScreen extends StatelessWidget {
           const SectionHeader(title: 'Body Weight'),
           const SizedBox(height: 14),
           _buildWeightCard(colors, user),
+          const SizedBox(height: 28),
+          const _InsightsSection(),
         ],
       ),
     );
@@ -211,6 +215,74 @@ class ProgressScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Simple, deterministic patterns found in the user's own recorded history —
+/// silent (renders nothing) until there's enough data or a meaningful
+/// pattern to show. See InsightEngine for the exact rules.
+class _InsightsSection extends StatefulWidget {
+  const _InsightsSection();
+
+  @override
+  State<_InsightsSection> createState() => _InsightsSectionState();
+}
+
+class _InsightsSectionState extends State<_InsightsSection> {
+  List<HealthInsight>? _insights;
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<HealthProvider>().history().then((logs) {
+      if (mounted) setState(() => _insights = InsightEngine.all(logs));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final insights = _insights;
+    if (insights == null || insights.isEmpty) return const SizedBox.shrink();
+
+    final colors = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeader(title: 'Insights'),
+        const SizedBox(height: 14),
+        ...insights.map((insight) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: colors.cardBorder),
+                  boxShadow: [BoxShadow(color: colors.shadow, blurRadius: 16, offset: const Offset(0, 6))],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.insights_rounded, size: 16, color: colors.primary),
+                        const SizedBox(width: 8),
+                        Text(insight.title, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: colors.textPrimary)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(insight.message, style: TextStyle(fontSize: 13, color: colors.textPrimary, height: 1.4)),
+                    const SizedBox(height: 8),
+                    Text(
+                      InsightEngine.disclaimer,
+                      style: TextStyle(fontSize: 10.5, fontStyle: FontStyle.italic, color: colors.textSecondary.withValues(alpha: 0.8)),
+                    ),
+                  ],
+                ),
+              ),
+            )),
+      ],
     );
   }
 }
