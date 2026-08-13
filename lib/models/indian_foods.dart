@@ -41,10 +41,15 @@ class IndianFoods {
       .firstWhere((c) => c.name.toLowerCase() == category.toLowerCase(), orElse: () => unknownCategory)
       .color;
 
+  // Magnesium/potassium/zinc below are populated only for simple,
+  // single-ingredient staples where standard nutrition-database per-100g
+  // values are well established and widely cited (rounded, scaled to
+  // this item's serving weight) — everything else is deliberately left
+  // unset (unknown) rather than guessed. See models/food_item.dart.
   static const items = <FoodItem>[
     // ---- Grains & Breads ----
-    FoodItem(name: 'Roti / Chapati', category: 'Grains & Breads', serving: '1 medium (40g)', calories: 120, protein: 3, carbs: 18, fiber: 3, fat: 3, sugar: 0.5, iron: 1.1, calcium: 12),
-    FoodItem(name: 'Plain Rice', category: 'Grains & Breads', serving: '1 cup cooked (150g)', calories: 205, protein: 4, carbs: 45, fiber: 0.6, fat: 0.4, sugar: 0.1, iron: 1.9, calcium: 16),
+    FoodItem(name: 'Roti / Chapati', category: 'Grains & Breads', serving: '1 medium (40g)', calories: 120, protein: 3, carbs: 18, fiber: 3, fat: 3, sugar: 0.5, iron: 1.1, calcium: 12, magnesium: 33, potassium: 100, zinc: 0.5),
+    FoodItem(name: 'Plain Rice', category: 'Grains & Breads', serving: '1 cup cooked (150g)', calories: 205, protein: 4, carbs: 45, fiber: 0.6, fat: 0.4, sugar: 0.1, iron: 1.9, calcium: 16, magnesium: 18, potassium: 53, zinc: 0.8),
     FoodItem(name: 'Jeera Rice', category: 'Grains & Breads', serving: '1 cup (150g)', calories: 240, protein: 4, carbs: 45, fiber: 1, fat: 5, sugar: 0.2, iron: 1.9, calcium: 18),
     FoodItem(name: 'Plain Paratha', category: 'Grains & Breads', serving: '1 piece', calories: 260, protein: 5, carbs: 36, fiber: 3, fat: 10, sugar: 1, iron: 1.6, calcium: 20),
     FoodItem(name: 'Poha', category: 'Grains & Breads', serving: '1 bowl (150g)', calories: 250, protein: 5, carbs: 45, fiber: 2, fat: 6, sugar: 2, iron: 2.7, calcium: 20, vitaminC: 6),
@@ -54,8 +59,8 @@ class IndianFoods {
     FoodItem(name: 'Masala Dosa', category: 'Grains & Breads', serving: '1 piece', calories: 300, protein: 6, carbs: 45, fiber: 3, fat: 11, sugar: 3, iron: 2.1, calcium: 22, vitaminC: 8),
 
     // ---- Dals & Legumes ----
-    FoodItem(name: 'Toor / Yellow Dal', category: 'Dals & Legumes', serving: '1 bowl (150g)', calories: 150, protein: 9, carbs: 20, fiber: 5, fat: 4, sugar: 2, iron: 2.4, calcium: 30),
-    FoodItem(name: 'Moong Dal', category: 'Dals & Legumes', serving: '1 bowl (150g)', calories: 150, protein: 10, carbs: 20, fiber: 6, fat: 3, sugar: 2, iron: 2.0, calcium: 28),
+    FoodItem(name: 'Toor / Yellow Dal', category: 'Dals & Legumes', serving: '1 bowl (150g)', calories: 150, protein: 9, carbs: 20, fiber: 5, fat: 4, sugar: 2, iron: 2.4, calcium: 30, magnesium: 54, potassium: 554, zinc: 1.5),
+    FoodItem(name: 'Moong Dal', category: 'Dals & Legumes', serving: '1 bowl (150g)', calories: 150, protein: 10, carbs: 20, fiber: 6, fat: 3, sugar: 2, iron: 2.0, calcium: 28, magnesium: 72, potassium: 399, zinc: 1.3),
     FoodItem(name: 'Rajma', category: 'Dals & Legumes', serving: '1 bowl (150g)', calories: 210, protein: 12, carbs: 30, fiber: 8, fat: 4, sugar: 3, iron: 3.0, calcium: 40, vitaminC: 3),
     FoodItem(name: 'Chole', category: 'Dals & Legumes', serving: '1 bowl (150g)', calories: 260, protein: 11, carbs: 35, fiber: 9, fat: 8, sugar: 5, iron: 3.2, calcium: 55, vitaminC: 4),
     FoodItem(name: 'Sambar', category: 'Dals & Legumes', serving: '1 bowl (150g)', calories: 140, protein: 6, carbs: 18, fiber: 5, fat: 4, sugar: 4, iron: 1.8, calcium: 35, vitaminC: 6),
@@ -68,8 +73,8 @@ class IndianFoods {
     FoodItem(name: 'Baingan Bharta', category: 'Vegetables', serving: '1 bowl (150g)', calories: 150, protein: 3, carbs: 14, fiber: 5, fat: 9, sugar: 5, iron: 0.9, calcium: 20, vitaminC: 8),
 
     // ---- Dairy ----
-    FoodItem(name: 'Milk (full cream)', category: 'Dairy', serving: '1 glass (250ml)', calories: 150, protein: 8, carbs: 12, fiber: 0, fat: 8, sugar: 12, calcium: 300),
-    FoodItem(name: 'Curd / Dahi', category: 'Dairy', serving: '1 bowl (150g)', calories: 100, protein: 6, carbs: 8, fiber: 0, fat: 5, sugar: 6, calcium: 200),
+    FoodItem(name: 'Milk (full cream)', category: 'Dairy', serving: '1 glass (250ml)', calories: 150, protein: 8, carbs: 12, fiber: 0, fat: 8, sugar: 12, calcium: 300, magnesium: 25, potassium: 375, zinc: 1.0),
+    FoodItem(name: 'Curd / Dahi', category: 'Dairy', serving: '1 bowl (150g)', calories: 100, protein: 6, carbs: 8, fiber: 0, fat: 5, sugar: 6, calcium: 200, magnesium: 18, potassium: 233, zinc: 0.9),
     FoodItem(name: 'Paneer', category: 'Dairy', serving: '100g', calories: 265, protein: 18, carbs: 6, fiber: 0, fat: 20, sugar: 2, calcium: 480),
     FoodItem(name: 'Sweet Lassi', category: 'Dairy', serving: '1 glass (250ml)', calories: 220, protein: 8, carbs: 30, fiber: 0, fat: 7, sugar: 28, calcium: 250),
     FoodItem(name: 'Ghee', category: 'Dairy', serving: '1 tbsp (14g)', calories: 112, protein: 0, carbs: 0, fiber: 0, fat: 12.5, sugar: 0),
@@ -82,17 +87,17 @@ class IndianFoods {
     FoodItem(name: 'Bhel Puri', category: 'Snacks', serving: '1 plate', calories: 250, protein: 6, carbs: 40, fiber: 4, fat: 8, sugar: 6, iron: 2.0, calcium: 30, vitaminC: 10),
 
     // ---- Non-Veg ----
-    FoodItem(name: 'Boiled Egg', category: 'Non-Veg', serving: '1 egg', calories: 78, protein: 6, carbs: 0.6, fiber: 0, fat: 5, sugar: 0.6, iron: 0.9, calcium: 28),
+    FoodItem(name: 'Boiled Egg', category: 'Non-Veg', serving: '1 egg', calories: 78, protein: 6, carbs: 0.6, fiber: 0, fat: 5, sugar: 0.6, iron: 0.9, calcium: 28, magnesium: 5, potassium: 63, zinc: 0.6),
     FoodItem(name: 'Egg Curry', category: 'Non-Veg', serving: '2 eggs (bowl)', calories: 280, protein: 14, carbs: 8, fiber: 2, fat: 20, sugar: 4, iron: 2.4, calcium: 70, vitaminC: 4),
     FoodItem(name: 'Chicken Curry', category: 'Non-Veg', serving: '1 bowl (150g)', calories: 300, protein: 25, carbs: 8, fiber: 2, fat: 18, sugar: 3, iron: 1.8, calcium: 40),
     FoodItem(name: 'Fish Curry', category: 'Non-Veg', serving: '1 bowl (150g)', calories: 250, protein: 22, carbs: 6, fiber: 1, fat: 15, sugar: 2, iron: 1.4, calcium: 60),
     FoodItem(name: 'Tandoori Chicken', category: 'Non-Veg', serving: '2 pieces', calories: 300, protein: 30, carbs: 4, fiber: 0, fat: 18, sugar: 2, iron: 1.5, calcium: 30),
 
     // ---- Fruits ----
-    FoodItem(name: 'Banana', category: 'Fruits', serving: '1 medium', calories: 105, protein: 1.3, carbs: 27, fiber: 3, fat: 0.4, sugar: 14, iron: 0.3, calcium: 6, vitaminC: 10),
-    FoodItem(name: 'Apple', category: 'Fruits', serving: '1 medium', calories: 95, protein: 0.5, carbs: 25, fiber: 4, fat: 0.3, sugar: 19, calcium: 11, vitaminC: 8),
+    FoodItem(name: 'Banana', category: 'Fruits', serving: '1 medium', calories: 105, protein: 1.3, carbs: 27, fiber: 3, fat: 0.4, sugar: 14, iron: 0.3, calcium: 6, vitaminC: 10, magnesium: 32, potassium: 422, zinc: 0.2),
+    FoodItem(name: 'Apple', category: 'Fruits', serving: '1 medium', calories: 95, protein: 0.5, carbs: 25, fiber: 4, fat: 0.3, sugar: 19, calcium: 11, vitaminC: 8, magnesium: 9, potassium: 195, zinc: 0.1),
     FoodItem(name: 'Mango', category: 'Fruits', serving: '1 cup (165g)', calories: 100, protein: 1, carbs: 25, fiber: 3, fat: 0.6, sugar: 23, calcium: 18, vitaminC: 60),
-    FoodItem(name: 'Orange', category: 'Fruits', serving: '1 medium', calories: 62, protein: 1.2, carbs: 15, fiber: 3, fat: 0.2, sugar: 12, calcium: 52, vitaminC: 70),
+    FoodItem(name: 'Orange', category: 'Fruits', serving: '1 medium', calories: 62, protein: 1.2, carbs: 15, fiber: 3, fat: 0.2, sugar: 12, calcium: 52, vitaminC: 70, magnesium: 13, potassium: 237, zinc: 0.1),
     FoodItem(name: 'Papaya', category: 'Fruits', serving: '1 cup (145g)', calories: 55, protein: 0.9, carbs: 14, fiber: 2.5, fat: 0.2, sugar: 8, calcium: 30, vitaminC: 88),
 
     // ---- Beverages ----

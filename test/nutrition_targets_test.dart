@@ -89,5 +89,46 @@ void main() {
       );
       expect(female.iron, greaterThan(male.iron));
     });
+
+    test('male RDA for zinc and potassium is higher than female (published adult RDA/AI)', () {
+      final female = NutritionTargets.compute(
+        weightKg: 60,
+        heightCm: 165,
+        age: 30,
+        sex: Sex.female,
+        activity: ActivityLevel.moderate,
+        goalWeightKg: 60,
+      );
+      final male = NutritionTargets.compute(
+        weightKg: 60,
+        heightCm: 165,
+        age: 30,
+        sex: Sex.male,
+        activity: ActivityLevel.moderate,
+        goalWeightKg: 60,
+      );
+      expect(male.zinc, greaterThan(female.zinc));
+      expect(male.potassium, greaterThan(female.potassium));
+    });
+
+    test('magnesium RDA rises slightly after age 30', () {
+      final younger = NutritionTargets.compute(
+        weightKg: 70,
+        heightCm: 175,
+        age: 25,
+        sex: Sex.male,
+        activity: ActivityLevel.moderate,
+        goalWeightKg: 70,
+      );
+      final older = NutritionTargets.compute(
+        weightKg: 70,
+        heightCm: 175,
+        age: 40,
+        sex: Sex.male,
+        activity: ActivityLevel.moderate,
+        goalWeightKg: 70,
+      );
+      expect(older.magnesium, greaterThan(younger.magnesium));
+    });
   });
 }

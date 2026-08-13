@@ -19,6 +19,14 @@ class FoodLog {
   final double calcium;
   final double vitaminC;
   final double caffeine;
+
+  // Nullable — the source food may not have a known value (see FoodItem);
+  // kept null rather than 0 so daily totals can tell "none logged" apart
+  // from "logged, but the amount isn't known".
+  final double? magnesium; // mg
+  final double? potassium; // mg
+  final double? zinc; // mg
+
   final DateTime dateTime;
 
   const FoodLog({
@@ -37,6 +45,9 @@ class FoodLog {
     required this.calcium,
     required this.vitaminC,
     required this.caffeine,
+    this.magnesium,
+    this.potassium,
+    this.zinc,
     required this.dateTime,
   });
 
@@ -56,6 +67,9 @@ class FoodLog {
       calcium: item.calcium * servings,
       vitaminC: item.vitaminC * servings,
       caffeine: item.caffeine * servings,
+      magnesium: item.magnesium == null ? null : item.magnesium! * servings,
+      potassium: item.potassium == null ? null : item.potassium! * servings,
+      zinc: item.zinc == null ? null : item.zinc! * servings,
       dateTime: when,
     );
   }
@@ -76,6 +90,9 @@ class FoodLog {
         'calcium': calcium,
         'vitamin_c': vitaminC,
         'caffeine': caffeine,
+        'magnesium': magnesium,
+        'potassium': potassium,
+        'zinc': zinc,
         'date_time': dateTime.toIso8601String(),
       };
 
@@ -95,6 +112,9 @@ class FoodLog {
         calcium: (m['calcium'] as num).toDouble(),
         vitaminC: (m['vitamin_c'] as num).toDouble(),
         caffeine: (m['caffeine'] as num?)?.toDouble() ?? 0,
+        magnesium: (m['magnesium'] as num?)?.toDouble(),
+        potassium: (m['potassium'] as num?)?.toDouble(),
+        zinc: (m['zinc'] as num?)?.toDouble(),
         dateTime: DateTime.parse(m['date_time'] as String),
       );
 
@@ -114,6 +134,9 @@ class FoodLog {
         calcium: calcium,
         vitaminC: vitaminC,
         caffeine: caffeine,
+        magnesium: magnesium,
+        potassium: potassium,
+        zinc: zinc,
         dateTime: dateTime,
       );
 }

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/food_item.dart';
 import '../models/food_log.dart';
 import '../models/indian_foods.dart';
+import '../models/portion_presets.dart';
 import '../providers/food_catalog_provider.dart';
 import '../providers/nutrition_provider.dart';
 import '../theme/app_theme.dart';
@@ -316,20 +317,54 @@ class _LogFoodSheetState extends State<LogFoodSheet> {
               ],
             ),
             const SizedBox(height: 22),
-            // Servings stepper.
+            Text('Portion size', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+            const SizedBox(height: 10),
+            Row(
+              children: PortionSize.values.map((size) {
+                final selected = _servings == size.multiplier;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _servings = size.multiplier),
+                    child: Container(
+                      margin: EdgeInsets.only(right: size == PortionSize.large ? 0 : 8),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: selected ? colors.primary : colors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: selected ? colors.primary : colors.cardBorder),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            size.label,
+                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: selected ? Colors.white : colors.textPrimary),
+                          ),
+                          Text(
+                            PortionPresets.labelFor(f, size),
+                            style: TextStyle(fontSize: 10.5, color: selected ? Colors.white70 : colors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 14),
+            // Fine-tune for anything the three presets don't cover exactly.
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Servings', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+                Text('Fine-tune', style: TextStyle(fontSize: 12.5, color: colors.textSecondary)),
                 Row(
                   children: [
-                    _StepButton(icon: Icons.remove_rounded, onTap: () => setState(() => _servings = (_servings - 0.5).clamp(0.5, 20))),
+                    _StepButton(icon: Icons.remove_rounded, onTap: () => setState(() => _servings = (_servings - 0.25).clamp(0.25, 20))),
                     Container(
-                      width: 56,
+                      width: 70,
                       alignment: Alignment.center,
-                      child: Text(_fmt(_servings), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: colors.textPrimary)),
+                      child: Text('${_fmt(_servings)}×', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: colors.textPrimary)),
                     ),
-                    _StepButton(icon: Icons.add_rounded, onTap: () => setState(() => _servings = (_servings + 0.5).clamp(0.5, 20))),
+                    _StepButton(icon: Icons.add_rounded, onTap: () => setState(() => _servings = (_servings + 0.25).clamp(0.25, 20))),
                   ],
                 ),
               ],

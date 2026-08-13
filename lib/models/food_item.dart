@@ -16,6 +16,14 @@ class FoodItem {
   final double calcium; // mg
   final double vitaminC; // mg
   final double caffeine; // mg
+
+  // Nullable — unlike the fields above, "not known for this food" is a real
+  // and common state here (we only fill these in where a reliable reference
+  // value exists), so null (unknown) is kept distinct from 0 (none).
+  final double? magnesium; // mg
+  final double? potassium; // mg
+  final double? zinc; // mg
+
   final bool isCustom;
 
   const FoodItem({
@@ -33,6 +41,9 @@ class FoodItem {
     this.calcium = 0,
     this.vitaminC = 0,
     this.caffeine = 0,
+    this.magnesium,
+    this.potassium,
+    this.zinc,
     this.isCustom = false,
   });
 
@@ -40,11 +51,13 @@ class FoodItem {
   static const csvColumns = [
     'name', 'category', 'serving', 'calories', 'protein', 'carbs',
     'fiber', 'fat', 'sugar', 'iron', 'calcium', 'vitaminC', 'caffeine',
+    'magnesium', 'potassium', 'zinc',
   ];
 
   List<Object> toCsvRow() => [
         name, category, serving, calories, protein, carbs,
         fiber, fat, sugar, iron, calcium, vitaminC, caffeine,
+        magnesium ?? '', potassium ?? '', zinc ?? '',
       ];
 
   Map<String, Object?> toMap() => {
@@ -62,6 +75,9 @@ class FoodItem {
         'calcium': calcium,
         'vitamin_c': vitaminC,
         'caffeine': caffeine,
+        'magnesium': magnesium,
+        'potassium': potassium,
+        'zinc': zinc,
       };
 
   factory FoodItem.fromMap(Map<String, Object?> m) => FoodItem(
@@ -79,6 +95,9 @@ class FoodItem {
         calcium: (m['calcium'] as num?)?.toDouble() ?? 0,
         vitaminC: (m['vitamin_c'] as num?)?.toDouble() ?? 0,
         caffeine: (m['caffeine'] as num?)?.toDouble() ?? 0,
+        magnesium: (m['magnesium'] as num?)?.toDouble(),
+        potassium: (m['potassium'] as num?)?.toDouble(),
+        zinc: (m['zinc'] as num?)?.toDouble(),
         isCustom: true,
       );
 
@@ -97,6 +116,9 @@ class FoodItem {
         calcium: calcium,
         vitaminC: vitaminC,
         caffeine: caffeine,
+        magnesium: magnesium,
+        potassium: potassium,
+        zinc: zinc,
         isCustom: isCustom,
       );
 }

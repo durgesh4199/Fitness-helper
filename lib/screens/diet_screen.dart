@@ -632,6 +632,41 @@ class _MicroCard extends StatelessWidget {
           _MicroBar(label: 'Calcium', value: totals.calcium, goal: targets.calcium.toDouble(), unit: 'mg', color: AppBrand.accentBlue),
           const SizedBox(height: 14),
           _MicroBar(label: 'Vitamin C', value: totals.vitaminC, goal: targets.vitaminC.toDouble(), unit: 'mg', color: AppBrand.accentOrange),
+          const SizedBox(height: 18),
+          Text('More minerals',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: colors.textSecondary, letterSpacing: 0.3)),
+          const SizedBox(height: 4),
+          Text(
+            'Only shown for foods with a known value — logged foods without one aren\'t counted as zero.',
+            style: TextStyle(fontSize: 10.5, color: colors.textSecondary.withValues(alpha: 0.8)),
+          ),
+          const SizedBox(height: 12),
+          _MicroBar(
+            label: 'Magnesium',
+            value: totals.magnesium,
+            goal: targets.magnesium.toDouble(),
+            unit: 'mg',
+            color: AppBrand.secondary,
+            known: totals.magnesiumKnown,
+          ),
+          const SizedBox(height: 14),
+          _MicroBar(
+            label: 'Potassium',
+            value: totals.potassium,
+            goal: targets.potassium.toDouble(),
+            unit: 'mg',
+            color: AppBrand.primary,
+            known: totals.potassiumKnown,
+          ),
+          const SizedBox(height: 14),
+          _MicroBar(
+            label: 'Zinc',
+            value: totals.zinc,
+            goal: targets.zinc.toDouble(),
+            unit: 'mg',
+            color: AppBrand.accentPink,
+            known: totals.zincKnown,
+          ),
         ],
       ),
     );
@@ -645,7 +680,19 @@ class _MicroBar extends StatelessWidget {
   final String unit;
   final Color color;
 
-  const _MicroBar({required this.label, required this.value, required this.goal, required this.unit, required this.color});
+  /// False when at least one logged food today didn't have a known value
+  /// for this nutrient — [value] is then a partial/lower-bound sum, not
+  /// the real total, so it's shown as such rather than as a percentage.
+  final bool known;
+
+  const _MicroBar({
+    required this.label,
+    required this.value,
+    required this.goal,
+    required this.unit,
+    required this.color,
+    this.known = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -665,18 +712,25 @@ class _MicroBar extends StatelessWidget {
                 Text(label, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: colors.textPrimary)),
               ],
             ),
-            Text('$valueStr / ${goal.round()} $unit',
-                style: TextStyle(fontSize: 12.5, color: colors.textSecondary, fontWeight: FontWeight.w600)),
+            if (known)
+              Text('$valueStr / ${goal.round()} $unit',
+                  style: TextStyle(fontSize: 12.5, color: colors.textSecondary, fontWeight: FontWeight.w600))
+            else if (value > 0)
+              Text('≥$valueStr $unit · limited data',
+                  style: TextStyle(fontSize: 11.5, color: colors.textSecondary, fontStyle: FontStyle.italic))
+            else
+              Text('No data logged',
+                  style: TextStyle(fontSize: 11.5, color: colors.textSecondary, fontStyle: FontStyle.italic)),
           ],
         ),
         const SizedBox(height: 8),
         ClipRRect(
           borderRadius: BorderRadius.circular(6),
           child: LinearProgressIndicator(
-            value: pct,
+            value: known ? pct : 0,
             minHeight: 8,
-            backgroundColor: color.withValues(alpha: 0.15),
-            valueColor: AlwaysStoppedAnimation(color),
+            backgroundColor: color.withValues(alpha: known ? 0.15 : 0.08),
+            valueColor: AlwaysStoppedAnimation(known ? color : Colors.transparent),
           ),
         ),
       ],
