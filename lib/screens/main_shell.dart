@@ -8,6 +8,7 @@ import 'workouts_screen.dart';
 import '../providers/body_measurement_provider.dart';
 import '../providers/food_catalog_provider.dart';
 import '../providers/nutrition_provider.dart';
+import '../providers/strength_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/weight_provider.dart';
 import '../providers/workout_provider.dart';
@@ -56,6 +57,7 @@ class _MainShellState extends State<MainShell> {
       catalog: context.read<FoodCatalogProvider>(),
       weight: context.read<WeightProvider>(),
       bodyMeasurements: context.read<BodyMeasurementProvider>(),
+      strength: context.read<StrengthProvider>(),
     );
   }
 

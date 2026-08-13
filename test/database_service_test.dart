@@ -4,6 +4,7 @@ import 'package:fitness_tracker/models/body_measurement_log.dart';
 import 'package:fitness_tracker/models/daily_health_log.dart';
 import 'package:fitness_tracker/models/food_item.dart';
 import 'package:fitness_tracker/models/food_log.dart';
+import 'package:fitness_tracker/models/strength_set.dart';
 import 'package:fitness_tracker/models/water_log.dart';
 import 'package:fitness_tracker/models/weight_log.dart';
 import 'package:fitness_tracker/models/workout_log.dart';
@@ -41,6 +42,7 @@ void main() {
       if (f.id != null) await db.deleteCustomFood(f.id!);
     }
     await db.clearDailyHealthLogs();
+    await db.clearAndInsertStrengthSets([]);
   });
 
   test('weight log insert/read round-trip, defaulting source to userEntered', () async {
@@ -228,5 +230,55 @@ void main() {
 
     final all = await db.getAllDailyHealthLogs();
     expect(all.length, 2);
+  });
+
+  test('strength set insert/read round-trip, including a null (bodyweight) weight', () async {
+    await db.insertStrengthSet(StrengthSet(
+      workoutLogId: 1,
+      exerciseName: 'Pull-up',
+      setIndex: 1,
+      reps: 12,
+      weightKg: null,
+      dateTime: DateTime(2026, 1, 1),
+    ));
+
+    final all = await db.getAllStrengthSets();
+    expect(all.length, 1);
+    expect(all.first.exerciseName, 'Pull-up');
+    expect(all.first.reps, 12);
+    expect(all.first.weightKg, isNull);
+  });
+
+  test('getStrengthSetsForWorkout only returns sets for that workout, ordered by set index', () async {
+    await db.insertStrengthSet(StrengthSet(workoutLogId: 1, exerciseName: 'Squat', setIndex: 2, reps: 5, weightKg: 90, dateTime: DateTime(2026, 1, 1)));
+    await db.insertStrengthSet(StrengthSet(workoutLogId: 1, exerciseName: 'Squat', setIndex: 1, reps: 5, weightKg: 80, dateTime: DateTime(2026, 1, 1)));
+    await db.insertStrengthSet(StrengthSet(workoutLogId: 2, exerciseName: 'Bench Press', setIndex: 1, reps: 8, weightKg: 50, dateTime: DateTime(2026, 1, 1)));
+
+    final workout1Sets = await db.getStrengthSetsForWorkout(1);
+    expect(workout1Sets.length, 2);
+    expect(workout1Sets.map((s) => s.setIndex).toList(), [1, 2]);
+  });
+
+  test('deleteStrengthSetsForWorkout removes only that workout\'s sets', () async {
+    await db.insertStrengthSet(StrengthSet(workoutLogId: 1, exerciseName: 'Squat', setIndex: 1, reps: 5, weightKg: 80, dateTime: DateTime(2026, 1, 1)));
+    await db.insertStrengthSet(StrengthSet(workoutLogId: 2, exerciseName: 'Bench Press', setIndex: 1, reps: 8, weightKg: 50, dateTime: DateTime(2026, 1, 1)));
+
+    await db.deleteStrengthSetsForWorkout(1);
+
+    final all = await db.getAllStrengthSets();
+    expect(all.length, 1);
+    expect(all.first.workoutLogId, 2);
+  });
+
+  test('clearAndInsertStrengthSets replaces existing rows (backup restore path)', () async {
+    await db.insertStrengthSet(StrengthSet(workoutLogId: 1, exerciseName: 'Old', setIndex: 1, reps: 5, weightKg: 40, dateTime: DateTime(2026, 1, 1)));
+
+    await db.clearAndInsertStrengthSets([
+      StrengthSet(workoutLogId: 5, exerciseName: 'Deadlift', setIndex: 1, reps: 5, weightKg: 100, dateTime: DateTime(2026, 2, 1)),
+    ]);
+
+    final all = await db.getAllStrengthSets();
+    expect(all.length, 1);
+    expect(all.first.exerciseName, 'Deadlift');
   });
 }

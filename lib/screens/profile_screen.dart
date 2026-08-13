@@ -11,6 +11,7 @@ import '../providers/food_catalog_provider.dart';
 import '../providers/health_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/nutrition_provider.dart';
+import '../providers/strength_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/weight_provider.dart';
@@ -1229,6 +1230,7 @@ class _BackupSectionState extends State<_BackupSection> {
       catalog: context.read<FoodCatalogProvider>(),
       weight: context.read<WeightProvider>(),
       bodyMeasurements: context.read<BodyMeasurementProvider>(),
+      strength: context.read<StrengthProvider>(),
     );
     await _refresh();
   }
@@ -1264,6 +1266,7 @@ class _BackupSectionState extends State<_BackupSection> {
         catalog: context.read<FoodCatalogProvider>(),
         weight: context.read<WeightProvider>(),
         bodyMeasurements: context.read<BodyMeasurementProvider>(),
+        strength: context.read<StrengthProvider>(),
       );
       messenger.showSnackBar(const SnackBar(content: Text('Backup restored.')));
     } catch (e) {

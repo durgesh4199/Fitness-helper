@@ -6,6 +6,7 @@ import '../models/workout_log.dart';
 import '../providers/workout_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/rpe_selector.dart';
+import 'log_sets_screen.dart';
 
 class AddWorkoutScreen extends StatefulWidget {
   const AddWorkoutScreen({super.key});
@@ -35,17 +36,27 @@ class _AddWorkoutScreenState extends State<AddWorkoutScreen> {
       (int.tryParse(_caloriesController.text) ?? 0) > 0;
 
   Future<void> _save() async {
+    final title = _titleController.text.trim();
     final log = WorkoutLog(
-      title: _titleController.text.trim(),
+      title: title,
       category: _category.name,
       minutes: int.parse(_minutesController.text),
       calories: int.parse(_caloriesController.text),
       dateTime: DateTime.now(),
       rpe: _rpe,
     );
-    await context.read<WorkoutProvider>().addLog(log);
+    final id = await context.read<WorkoutProvider>().addLog(log);
     if (!mounted) return;
-    Navigator.of(context).pop();
+
+    // Strength workouts get a chance to log individual sets right away;
+    // other categories just save and return, matching prior behavior.
+    if (_category.name == 'Strength') {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => LogSetsScreen(workoutLogId: id, workoutTitle: title)),
+      );
+    } else {
+      Navigator.of(context).pop();
+    }
   }
 
   @override

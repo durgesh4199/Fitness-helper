@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/recovery_signal.dart';
 import '../models/workout.dart';
 import '../models/workout_log.dart';
 import '../services/database_service.dart';
@@ -114,11 +115,17 @@ class WorkoutProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addLog(WorkoutLog log) async {
+  Future<int> addLog(WorkoutLog log) async {
     final id = await _db.insertLog(log);
     _logs = [log.copyWith(id: id), ..._logs];
     notifyListeners();
+    return id;
   }
+
+  /// Simple heuristic nudge based on training streak + recent RPE — see
+  /// [RecoveryAdvisor] for the thresholds and disclaimer. Null most of the
+  /// time; only appears when both signals line up.
+  RecoverySignal? get recoverySignal => RecoveryAdvisor.evaluate(_logs, streakDays: streakDays);
 
   Future<void> deleteLog(int id) async {
     await _db.deleteLog(id);
