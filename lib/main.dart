@@ -8,6 +8,7 @@ import 'providers/notification_provider.dart';
 import 'providers/nutrition_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/user_provider.dart';
+import 'providers/weight_provider.dart';
 import 'providers/workout_provider.dart';
 import 'screens/main_shell.dart';
 import 'screens/onboarding_screen.dart';
@@ -40,6 +41,7 @@ class FitnessTrackerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ThemeProvider()..load()),
         ChangeNotifierProvider(create: (_) => UserProvider()..load()),
         ChangeNotifierProvider(create: (_) => WorkoutProvider()..load()),
+        ChangeNotifierProvider(create: (_) => WeightProvider()..load()),
         ChangeNotifierProvider(create: (_) => NutritionProvider()..load()),
         ChangeNotifierProvider(create: (_) => FoodCatalogProvider()..load()),
         ChangeNotifierProvider(create: (_) => HealthProvider()..init()),

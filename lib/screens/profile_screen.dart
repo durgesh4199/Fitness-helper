@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/nutrition_targets.dart';
+import '../models/weight_log.dart';
 import '../providers/food_catalog_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/nutrition_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
+import '../providers/weight_provider.dart';
 import '../providers/workout_provider.dart';
 import '../services/backup_service.dart';
 import '../theme/app_theme.dart';
@@ -33,6 +35,8 @@ class ProfileScreen extends StatelessWidget {
           _buildProfileCard(context, colors, user),
           const SizedBox(height: 24),
           _buildStatsRow(colors, user),
+          const SizedBox(height: 24),
+          const _WeightHistorySection(),
           const SizedBox(height: 24),
           _buildTargetsCard(colors, user, nutrition.todayTotals),
           const SizedBox(height: 28),
@@ -747,6 +751,158 @@ class _SettingItem {
   const _SettingItem(this.icon, this.label, this.color, {this.onTap});
 }
 
+/// Compact weight-history card: current weight, 7d/30d rolling averages,
+/// weekly change, and a short list of recent entries with a quick "Log
+/// weight" action. Full trend charts belong on Progress — this is just
+/// enough to make the history usable from Profile.
+class _WeightHistorySection extends StatelessWidget {
+  const _WeightHistorySection();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final weight = context.watch<WeightProvider>();
+
+    String fmt(double? v) => v == null ? '--' : '${v.toStringAsFixed(1)} kg';
+    String fmtChange(double? v) {
+      if (v == null) return '--';
+      final sign = v > 0 ? '+' : '';
+      return '$sign${v.toStringAsFixed(1)} kg';
+    }
+
+    final weeklyChange = weight.weeklyChange;
+    final changeColor = weeklyChange == null
+        ? colors.textSecondary
+        : weeklyChange <= 0
+            ? AppBrand.fiber
+            : AppBrand.accentOrange;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: colors.cardBorder),
+        boxShadow: [BoxShadow(color: colors.shadow, blurRadius: 16, offset: const Offset(0, 6))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: colors.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                child: Icon(Icons.monitor_weight_outlined, color: colors.primary, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text('Weight History', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: colors.textPrimary)),
+              ),
+              TextButton.icon(
+                onPressed: () => _showLogWeightDialog(context),
+                icon: const Icon(Icons.add_rounded, size: 16),
+                label: const Text('Log weight'),
+                style: TextButton.styleFrom(foregroundColor: colors.primary, padding: const EdgeInsets.symmetric(horizontal: 8)),
+              ),
+            ],
+          ),
+          if (weight.logs.isEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'No weight logged yet — log an entry to start tracking your trend over time.',
+              style: TextStyle(fontSize: 12.5, color: colors.textSecondary, height: 1.4),
+            ),
+          ] else ...[
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                _miniStat(colors, fmt(weight.currentWeightKg), 'Latest', colors.textPrimary),
+                _miniStat(colors, fmt(weight.sevenDayAverage), '7d avg', colors.textPrimary),
+                _miniStat(colors, fmt(weight.thirtyDayAverage), '30d avg', colors.textPrimary),
+                _miniStat(colors, fmtChange(weeklyChange), '7d change', changeColor),
+              ],
+            ),
+            const SizedBox(height: 14),
+            ...weight.logs.take(3).map((l) => _entryRow(context, colors, l)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _miniStat(AppPalette colors, String value, String label, Color valueColor) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(value, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: valueColor)),
+          const SizedBox(height: 2),
+          Text(label, style: TextStyle(fontSize: 10, color: colors.textSecondary)),
+        ],
+      ),
+    );
+  }
+
+  Widget _entryRow(BuildContext context, AppPalette colors, WeightLog log) {
+    final d = log.dateTime;
+    final dateLabel = '${d.day}/${d.month}/${d.year}';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(dateLabel, style: TextStyle(fontSize: 12.5, color: colors.textSecondary)),
+          ),
+          Text('${log.weight.toStringAsFixed(1)} kg', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+          const SizedBox(width: 6),
+          InkWell(
+            onTap: () => context.read<WeightProvider>().deleteEntry(log.id!),
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(Icons.close_rounded, size: 15, color: colors.textSecondary.withValues(alpha: 0.7)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLogWeightDialog(BuildContext context) {
+    final weightProvider = context.read<WeightProvider>();
+    final userProvider = context.read<UserProvider>();
+    final controller = TextEditingController(text: userProvider.weightKg.toStringAsFixed(1));
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Log weight'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,1}'))],
+          decoration: const InputDecoration(suffixText: 'kg'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () async {
+              final value = double.tryParse(controller.text.trim());
+              Navigator.of(ctx).pop();
+              if (value == null || value <= 0) return;
+              await weightProvider.addEntry(weightKg: value);
+              // Keep the profile's "current weight" (used for BMI/targets) in sync.
+              await userProvider.updateProfile(weightKg: value);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _BackupSection extends StatefulWidget {
   const _BackupSection();
 
@@ -790,6 +946,7 @@ class _BackupSectionState extends State<_BackupSection> {
       workouts: context.read<WorkoutProvider>(),
       nutrition: context.read<NutritionProvider>(),
       catalog: context.read<FoodCatalogProvider>(),
+      weight: context.read<WeightProvider>(),
     );
     await _refresh();
   }
@@ -823,6 +980,7 @@ class _BackupSectionState extends State<_BackupSection> {
         workouts: context.read<WorkoutProvider>(),
         nutrition: context.read<NutritionProvider>(),
         catalog: context.read<FoodCatalogProvider>(),
+        weight: context.read<WeightProvider>(),
       );
       messenger.showSnackBar(const SnackBar(content: Text('Backup restored.')));
     } catch (e) {

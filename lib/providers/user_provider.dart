@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/water_log.dart';
+import '../services/database_service.dart';
 
 enum Sex { male, female }
 
@@ -42,6 +44,8 @@ extension ActivityLevelX on ActivityLevel {
 }
 
 class UserProvider extends ChangeNotifier {
+  final DatabaseService _db = DatabaseService.instance;
+
   static const _kOnboardingComplete = 'onboarding_complete';
   static const _kName = 'user_name';
   static const _kHeight = 'user_height_cm';
@@ -201,7 +205,19 @@ class UserProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_kWaterIntake, _waterIntakeMl);
     await prefs.setString(_kWaterDate, _todayKey);
+
+    // Also keep a permanent log entry so history/weekly-average features can
+    // be built later without changing the fast "today" counter above.
+    await _db.insertWaterLog(WaterLog(amountMl: ml, dateTime: DateTime.now()));
   }
+
+  /// All water-log entries ever recorded, newest first — used for history
+  /// views and backup export. The day-to-day quick total stays on
+  /// [waterIntakeMl]/[addWater] above.
+  Future<List<WaterLog>> allWaterLogs() => _db.getAllWaterLogs();
+
+  /// Replaces all water logs with [logs] — used when restoring a backup.
+  Future<void> restoreWaterLogs(List<WaterLog> logs) => _db.clearAndInsertWaterLogs(logs);
 
   /// Profile fields worth carrying across a backup. Excludes today's water
   /// intake, which is transient day-to-day state, not a durable setting.

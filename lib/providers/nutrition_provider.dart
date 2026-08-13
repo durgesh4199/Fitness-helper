@@ -63,12 +63,65 @@ class NutritionGoals {
   });
 }
 
-/// One point on the estimated blood-glucose-response curve.
+/// One point on the internal meal-impact simulation curve. This is a
+/// heuristic shape, not a blood-glucose measurement — kept for drawing the
+/// relative response chart, never shown to the user as an absolute reading.
 class GlucosePoint {
   final double hour; // hour of day (0-24), e.g. 13.5 = 1:30 PM
-  final double level; // estimated mg/dL
+  final double level; // internal simulated units, not mg/dL
 
   const GlucosePoint(this.hour, this.level);
+}
+
+/// Coarse, non-medical categorization of today's estimated meal impact.
+/// Deliberately categorical (not a number) so the app never implies it's
+/// measuring or predicting an actual blood-glucose value.
+enum MealImpactLevel { veryLow, low, moderate, high, veryHigh }
+
+extension MealImpactLevelX on MealImpactLevel {
+  String get label => switch (this) {
+        MealImpactLevel.veryLow => 'Very Low',
+        MealImpactLevel.low => 'Low',
+        MealImpactLevel.moderate => 'Moderate',
+        MealImpactLevel.high => 'High',
+        MealImpactLevel.veryHigh => 'Very High',
+      };
+}
+
+/// A single non-medical estimate of how a day's logged meals may affect
+/// glucose response, built entirely from logged carbs/sugar/fiber/portion —
+/// never from an actual glucose measurement. Always pair with
+/// [disclaimer] in the UI.
+class MealImpactEstimate {
+  final MealImpactLevel level;
+  final String carbLoad; // Low | Moderate | High
+  final String fiber; // Low | Moderate | High
+  final String sugar; // Low | Moderate | High
+  final String portionSize; // Low | Moderate | High
+  final String confidence; // Low | Moderate — never "High": this is a heuristic, not a lab reading
+  final bool hasData;
+
+  const MealImpactEstimate({
+    required this.level,
+    required this.carbLoad,
+    required this.fiber,
+    required this.sugar,
+    required this.portionSize,
+    required this.confidence,
+    this.hasData = true,
+  });
+
+  const MealImpactEstimate.empty()
+      : level = MealImpactLevel.veryLow,
+        carbLoad = '--',
+        fiber = '--',
+        sugar = '--',
+        portionSize = '--',
+        confidence = '--',
+        hasData = false;
+
+  static const String disclaimer =
+      'This is a food-impact estimate, not a blood-glucose measurement or medical prediction.';
 }
 
 class NutritionProvider extends ChangeNotifier {
@@ -273,6 +326,53 @@ class NutritionProvider extends ChangeNotifier {
       peakGlucoseForDate(_selectedDate, diabetic: diabetic);
   String glucoseStatus({bool diabetic = false}) =>
       glucoseStatusForDate(_selectedDate, diabetic: diabetic);
+
+  /// Categorical, non-medical estimate of [date]'s meal impact — this is the
+  /// user-facing surface of the glucose model; UI should present [level] and
+  /// the breakdown fields, never [peakGlucoseForDate]'s raw number.
+  MealImpactEstimate mealImpactEstimateForDate(DateTime date, {bool diabetic = false}) {
+    final dayLogs = logsForDate(date).where((l) => l.carbs > 0).toList();
+    if (dayLogs.isEmpty) return const MealImpactEstimate.empty();
+
+    final totals = totalsForDate(date);
+    final baseline = _baselineFor(diabetic);
+    final ceiling = _rangeCeilingFor(diabetic);
+    final peak = peakGlucoseForDate(date, diabetic: diabetic);
+
+    // Normalize the peak excursion above baseline against the span to the
+    // clinically-referenced "in range" ceiling, then bucket into 5 levels.
+    final span = math.max(1.0, ceiling - baseline);
+    final ratio = (peak - baseline) / span;
+
+    final level = ratio <= 0.15
+        ? MealImpactLevel.veryLow
+        : ratio <= 0.4
+            ? MealImpactLevel.low
+            : ratio <= 0.85
+                ? MealImpactLevel.moderate
+                : ratio <= 1.15
+                    ? MealImpactLevel.high
+                    : MealImpactLevel.veryHigh;
+
+    String bucket(double value, double lowMax, double moderateMax) =>
+        value <= lowMax ? 'Low' : (value <= moderateMax ? 'Moderate' : 'High');
+
+    // Confidence intentionally caps at "Moderate" — this model is a
+    // heuristic, never presented as clinically confident.
+    final confidence = dayLogs.length >= 3 ? 'Moderate' : 'Low';
+
+    return MealImpactEstimate(
+      level: level,
+      carbLoad: bucket(totals.carbs, 40, 90),
+      fiber: bucket(totals.fiber, 8, 20),
+      sugar: bucket(totals.sugar, 15, 35),
+      portionSize: bucket(totals.calories, 500, 1000),
+      confidence: confidence,
+    );
+  }
+
+  MealImpactEstimate mealImpactEstimate({bool diabetic = false}) =>
+      mealImpactEstimateForDate(_selectedDate, diabetic: diabetic);
 
   Future<void> load() async {
     _logs = await _db.getAllFoodLogs();
