@@ -25,7 +25,11 @@ jobs:
 
       - run: flutter analyze
 
-      - run: flutter test
+      # -j 1: several test files open the same on-disk sqlite fixture
+      # (sqflite_common_ffi has no per-test-file isolation), so concurrent
+      # runners can race for its file lock. Serializing avoids flaky
+      # "database is locked" failures.
+      - run: flutter test -j 1
 
       - run: flutter build apk --release
 

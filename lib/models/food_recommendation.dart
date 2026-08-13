@@ -40,6 +40,26 @@ class FoodRecommendation {
   });
 }
 
+/// Two foods suggested together because eaten as a pair they close more of
+/// today's remaining nutrient gaps than either alone — meals are usually
+/// combinations (dal + roti, curd + oats), not single ingredients.
+class FoodComboRecommendation {
+  final FoodItem first;
+  final FoodItem second;
+
+  /// Combined contribution per nutrient (first + second), for every
+  /// nutrient that still has a remaining gap.
+  final Map<RecommendedNutrient, double> combinedAmounts;
+
+  const FoodComboRecommendation({
+    required this.first,
+    required this.second,
+    required this.combinedAmounts,
+  });
+
+  double get combinedCalories => first.calories + second.calories;
+}
+
 /// Suggests foods from the catalog to help close today's remaining nutrient
 /// gaps, filtered so they won't spike a diabetic user's blood sugar and
 /// aren't oil-heavy dishes.
@@ -109,5 +129,63 @@ class FoodRecommendationEngine {
         fillPercent: (amount / remainingAmount).clamp(0.0, 1.0),
       );
     }).toList();
+  }
+
+  /// Suggests food pairs that, eaten together, close the most of today's
+  /// remaining gaps across every nutrient in [remaining] (not just one) —
+  /// e.g. a protein-heavy food paired with a fiber-heavy one. Same
+  /// sugar-safety/oiliness/calorie-budget filtering as [recommendFor].
+  static List<FoodComboRecommendation> recommendCombinations({
+    required Map<RecommendedNutrient, double> remaining,
+    required double remainingCalories,
+    required List<FoodItem> catalog,
+    required bool diabetic,
+    int limit = 2,
+  }) {
+    final activeGaps = remaining.entries.where((e) => e.value > 0).toList();
+    if (activeGaps.isEmpty) return const [];
+
+    final candidates = catalog.where((f) {
+      if (_isOily(f)) return false;
+      if (diabetic && _spike(f, diabetic: true) > _diabeticSafeSpikeThreshold) return false;
+      return activeGaps.any((e) => e.key.amountIn(f) > 0); // contributes to at least one gap
+    }).toList();
+    if (candidates.length < 2) return const [];
+
+    double gapScore(FoodItem f) {
+      var s = 0.0;
+      for (final e in activeGaps) {
+        s += (e.key.amountIn(f) / e.value).clamp(0.0, 1.0);
+      }
+      return s;
+    }
+
+    // Keep pairing cheap: only pair among the individually-strongest picks.
+    final shortlist = [...candidates]..sort((a, b) => gapScore(b).compareTo(gapScore(a)));
+    final pool = shortlist.take(10).toList();
+
+    final combos = <FoodComboRecommendation>[];
+    for (var i = 0; i < pool.length; i++) {
+      for (var j = i + 1; j < pool.length; j++) {
+        final a = pool[i], b = pool[j];
+        if (a.calories + b.calories > remainingCalories + 150) continue;
+        combos.add(FoodComboRecommendation(
+          first: a,
+          second: b,
+          combinedAmounts: {for (final e in activeGaps) e.key: e.key.amountIn(a) + e.key.amountIn(b)},
+        ));
+      }
+    }
+
+    double comboScore(FoodComboRecommendation c) {
+      var s = 0.0;
+      for (final e in activeGaps) {
+        s += (c.combinedAmounts[e.key]! / e.value).clamp(0.0, 1.0);
+      }
+      return s;
+    }
+
+    combos.sort((a, b) => comboScore(b).compareTo(comboScore(a)));
+    return combos.take(limit).toList();
   }
 }

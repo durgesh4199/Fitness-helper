@@ -8,6 +8,7 @@ import '../models/food_item.dart';
 import '../models/food_log.dart';
 import '../models/food_recommendation.dart';
 import '../models/indian_foods.dart';
+import '../models/meal_quality.dart';
 import '../models/nutrition_targets.dart';
 import '../providers/food_catalog_provider.dart';
 import '../providers/nutrition_provider.dart';
@@ -761,9 +762,22 @@ class _RecommendationsCardState extends State<_RecommendationsCard> {
       section(RecommendedNutrient.calcium, totals.calcium, targets.calcium.toDouble()),
     ].whereType<_RecoSection>().toList();
 
-    if (sections.isEmpty) return const SizedBox.shrink();
+    final remainingMap = <RecommendedNutrient, double>{
+      RecommendedNutrient.protein: math.max(0.0, targets.protein - totals.protein),
+      RecommendedNutrient.fiber: math.max(0.0, targets.fiber - totals.fiber),
+      RecommendedNutrient.iron: math.max(0.0, targets.iron - totals.iron),
+      RecommendedNutrient.calcium: math.max(0.0, targets.calcium - totals.calcium),
+    };
+    final combos = FoodRecommendationEngine.recommendCombinations(
+      remaining: remainingMap,
+      remainingCalories: remainingCalories,
+      catalog: widget.catalog,
+      diabetic: widget.diabetic,
+    );
 
-    final tipCount = sections.fold<int>(0, (s, sec) => s + sec.picks.length);
+    if (sections.isEmpty && combos.isEmpty) return const SizedBox.shrink();
+
+    final tipCount = sections.fold<int>(0, (s, sec) => s + sec.picks.length) + combos.length;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -807,6 +821,10 @@ class _RecommendationsCardState extends State<_RecommendationsCard> {
             ),
             const SizedBox(height: 16),
             _ConsumedTodayView(logs: widget.consumedToday),
+            if (combos.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _ComboSectionView(combos: combos),
+            ],
             for (final s in sections) ...[
               const SizedBox(height: 16),
               _RecoSectionView(section: s, color: _RecommendationsCard._colorFor(s.nutrient), icon: _RecommendationsCard._iconFor(s.nutrient)),
@@ -949,6 +967,111 @@ class _RecoTile extends StatelessWidget {
   }
 }
 
+class _ComboSectionView extends StatelessWidget {
+  final List<FoodComboRecommendation> combos;
+
+  const _ComboSectionView({required this.combos});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.ramen_dining_rounded, size: 15, color: colors.primary),
+            const SizedBox(width: 6),
+            Text('Suggested meals', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ...combos.map((c) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _ComboTile(combo: c),
+            )),
+      ],
+    );
+  }
+}
+
+class _ComboTile extends StatelessWidget {
+  final FoodComboRecommendation combo;
+
+  const _ComboTile({required this.combo});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.background,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${combo.first.name} + ${combo.second.name}',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                ),
+              ),
+              Text('${combo.combinedCalories.round()} kcal', style: TextStyle(fontSize: 11, color: colors.textSecondary)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            children: combo.combinedAmounts.entries
+                .where((e) => e.value > 0)
+                .map((e) => Text(
+                      '${e.key.label} +${e.value.round()}${e.key.unit}',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _RecommendationsCard._colorFor(e.key)),
+                    ))
+                .toList(),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: _ComboLogButton(food: combo.first)),
+              const SizedBox(width: 8),
+              Expanded(child: _ComboLogButton(food: combo.second)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ComboLogButton extends StatelessWidget {
+  final FoodItem food;
+
+  const _ComboLogButton({required this.food});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return OutlinedButton.icon(
+      onPressed: () => showLogFoodSheet(context, food),
+      icon: const Icon(Icons.add_rounded, size: 15),
+      label: Text(food.name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5)),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: colors.primary,
+        side: BorderSide(color: colors.primary.withValues(alpha: 0.3)),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+}
+
 class _MealSection extends StatelessWidget {
   final String meal;
   final List<FoodLog> logs;
@@ -958,12 +1081,15 @@ class _MealSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mealCals = logs.fold<double>(0, (s, l) => s + l.calories).round();
+    final quality = MealQualityScorer.score(logs);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SectionHeader(title: meal, actionLabel: '$mealCals kcal'),
+          const SizedBox(height: 8),
+          _MealQualityRow(quality: quality),
           const SizedBox(height: 12),
           ...logs.map((log) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
@@ -981,6 +1107,76 @@ class _MealSection extends StatelessWidget {
                 ),
               )),
           const SizedBox(height: 14),
+        ],
+      ),
+    );
+  }
+}
+
+/// Compact "Meal quality" readout: a score chip that expands into the
+/// underlying checklist. Neutral labels only — never "good"/"bad" food
+/// judgments, just which factors this meal met.
+class _MealQualityRow extends StatefulWidget {
+  final MealQualityResult quality;
+
+  const _MealQualityRow({required this.quality});
+
+  @override
+  State<_MealQualityRow> createState() => _MealQualityRowState();
+}
+
+class _MealQualityRowState extends State<_MealQualityRow> {
+  bool _expanded = false;
+
+  Color _scoreColor(AppPalette colors, int score) {
+    if (score >= 80) return AppBrand.fiber;
+    if (score >= 50) return AppBrand.accentOrange;
+    return colors.textSecondary;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final q = widget.quality;
+    final color = _scoreColor(colors, q.score);
+
+    return GestureDetector(
+      onTap: () => setState(() => _expanded = !_expanded),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(10)),
+                child: Text('Meal quality ${q.score}', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: color)),
+              ),
+              const SizedBox(width: 6),
+              Icon(_expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 16, color: colors.textSecondary),
+            ],
+          ),
+          if (_expanded) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 10,
+              runSpacing: 6,
+              children: q.checks.entries
+                  .map((e) => Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            e.value ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+                            size: 13,
+                            color: e.value ? AppBrand.fiber : AppBrand.accentOrange,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(e.key.label, style: TextStyle(fontSize: 11, color: colors.textSecondary)),
+                        ],
+                      ))
+                  .toList(),
+            ),
+          ],
         ],
       ),
     );
