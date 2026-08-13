@@ -5,6 +5,7 @@ import '../models/workout.dart';
 import '../models/workout_log.dart';
 import '../providers/workout_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/rpe_selector.dart';
 
 class AddWorkoutScreen extends StatefulWidget {
   const AddWorkoutScreen({super.key});
@@ -18,6 +19,7 @@ class _AddWorkoutScreenState extends State<AddWorkoutScreen> {
   final _titleController = TextEditingController();
   final _minutesController = TextEditingController(text: '30');
   final _caloriesController = TextEditingController(text: '200');
+  int? _rpe;
 
   @override
   void dispose() {
@@ -39,6 +41,7 @@ class _AddWorkoutScreenState extends State<AddWorkoutScreen> {
       minutes: int.parse(_minutesController.text),
       calories: int.parse(_caloriesController.text),
       dateTime: DateTime.now(),
+      rpe: _rpe,
     );
     await context.read<WorkoutProvider>().addLog(log);
     if (!mounted) return;
@@ -104,6 +107,8 @@ class _AddWorkoutScreenState extends State<AddWorkoutScreen> {
                 Expanded(child: _field(colors, 'Calories burned', _caloriesController, TextInputType.number)),
               ],
             ),
+            const SizedBox(height: 28),
+            RpeSelector(value: _rpe, onChanged: (v) => setState(() => _rpe = v)),
             const SizedBox(height: 32),
             SizedBox(
               height: 54,

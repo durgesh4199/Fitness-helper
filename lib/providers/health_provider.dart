@@ -29,10 +29,25 @@ class HealthProvider extends ChangeNotifier {
   int? sleepMinutes;
   double? caloriesBurned;
 
+  /// Trailing daily-step baseline (previous 7 full days, zero-step days
+  /// excluded) and the personalized target derived from it — replaces a
+  /// one-size-fits-all 10,000-step goal with one based on the user's own
+  /// recent activity, gently nudged upward.
+  double? averageDailySteps;
+  int? stepGoal;
+
   String get sleepLabel {
     final m = sleepMinutes;
     if (m == null) return '--';
     return '${m ~/ 60}h ${m % 60}m';
+  }
+
+  /// A modest (+10%) stretch above the recent daily average, rounded to a
+  /// friendly number and bounded to a sane range. Pure/static so it's easy
+  /// to unit test without a live Health Connect connection.
+  static int personalizedStepTarget(double trailingAverageSteps) {
+    final target = ((trailingAverageSteps * 1.1) / 100).round() * 100;
+    return target.clamp(3000, 20000);
   }
 
   Future<void> init() async {
@@ -147,6 +162,13 @@ class HealthProvider extends ChangeNotifier {
       sleepMinutes = sleepPoints.isEmpty ? null : sleepMins;
       caloriesBurned = totalCalories;
       lastSynced = now;
+
+      final trailingAvg = await _fetchTrailingAverageSteps(startOfDay);
+      if (trailingAvg != null) {
+        averageDailySteps = trailingAvg;
+        stepGoal = personalizedStepTarget(trailingAvg);
+      }
+
       await _saveCache();
     } catch (e) {
       errorMessage = 'Sync failed: $e';
@@ -156,6 +178,22 @@ class HealthProvider extends ChangeNotifier {
     }
   }
 
+  /// Averages total steps over the 7 full days before [today], skipping any
+  /// day with zero steps (almost always a sync gap, not genuinely zero
+  /// activity, and would otherwise drag the baseline down misleadingly).
+  /// Returns null if there isn't at least one day of data.
+  Future<double?> _fetchTrailingAverageSteps(DateTime today) async {
+    final dailyTotals = <int>[];
+    for (var i = 1; i <= 7; i++) {
+      final dayStart = today.subtract(Duration(days: i));
+      final dayEnd = dayStart.add(const Duration(days: 1));
+      final total = await _health.getTotalStepsInInterval(dayStart, dayEnd);
+      if (total != null && total > 0) dailyTotals.add(total);
+    }
+    if (dailyTotals.isEmpty) return null;
+    return dailyTotals.reduce((a, b) => a + b) / dailyTotals.length;
+  }
+
   Future<void> _loadCache() async {
     final prefs = await SharedPreferences.getInstance();
     steps = prefs.getInt('health_steps');
@@ -163,6 +201,8 @@ class HealthProvider extends ChangeNotifier {
     heartRate = hr;
     sleepMinutes = prefs.getInt('health_sleep_minutes');
     caloriesBurned = prefs.getDouble('health_calories');
+    averageDailySteps = prefs.getDouble('health_avg_daily_steps');
+    stepGoal = prefs.getInt('health_step_goal');
     final lastSyncedMs = prefs.getInt('health_last_synced');
     lastSynced = lastSyncedMs != null ? DateTime.fromMillisecondsSinceEpoch(lastSyncedMs) : null;
   }
@@ -173,6 +213,8 @@ class HealthProvider extends ChangeNotifier {
     if (heartRate != null) await prefs.setDouble('health_heart_rate', heartRate!);
     if (sleepMinutes != null) await prefs.setInt('health_sleep_minutes', sleepMinutes!);
     if (caloriesBurned != null) await prefs.setDouble('health_calories', caloriesBurned!);
+    if (averageDailySteps != null) await prefs.setDouble('health_avg_daily_steps', averageDailySteps!);
+    if (stepGoal != null) await prefs.setInt('health_step_goal', stepGoal!);
     if (lastSynced != null) await prefs.setInt('health_last_synced', lastSynced!.millisecondsSinceEpoch);
   }
 }

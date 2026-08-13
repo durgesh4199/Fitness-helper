@@ -9,6 +9,10 @@ class WorkoutLog {
   final int calories;
   final DateTime dateTime;
 
+  /// Rate of Perceived Exertion (1-10), optional — how hard the workout
+  /// felt, not a medical assessment. Null when the user skipped it.
+  final int? rpe;
+
   const WorkoutLog({
     this.id,
     required this.title,
@@ -16,10 +20,15 @@ class WorkoutLog {
     required this.minutes,
     required this.calories,
     required this.dateTime,
+    this.rpe,
   });
 
   IconData get icon => categoryIcon(category);
   Color get color => categoryColor(category);
+
+  /// Simple training-load metric (duration x RPE) — a relative number for
+  /// comparing sessions/weeks, not a clinical measurement. Null without RPE.
+  int? get trainingLoad => rpe == null ? null : minutes * rpe!;
 
   Map<String, Object?> toMap() {
     return {
@@ -29,6 +38,7 @@ class WorkoutLog {
       'minutes': minutes,
       'calories': calories,
       'date_time': dateTime.toIso8601String(),
+      'rpe': rpe,
     };
   }
 
@@ -40,6 +50,7 @@ class WorkoutLog {
       minutes: map['minutes'] as int,
       calories: map['calories'] as int,
       dateTime: DateTime.parse(map['date_time'] as String),
+      rpe: map['rpe'] as int?,
     );
   }
 
@@ -51,6 +62,7 @@ class WorkoutLog {
       minutes: minutes,
       calories: calories,
       dateTime: dateTime,
+      rpe: rpe,
     );
   }
 }

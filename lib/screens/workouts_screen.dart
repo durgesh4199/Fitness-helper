@@ -193,7 +193,7 @@ class _HistoryTile extends StatelessWidget {
                 Text(log.title, style: TextStyle(fontWeight: FontWeight.w700, color: colors.textPrimary)),
                 const SizedBox(height: 2),
                 Text(
-                  '${log.minutes} min · ${log.calories} kcal',
+                  '${log.minutes} min · ${log.calories} kcal${log.rpe != null ? ' · RPE ${log.rpe}' : ''}',
                   style: TextStyle(fontSize: 12.5, color: colors.textSecondary),
                 ),
               ],

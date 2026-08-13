@@ -5,6 +5,7 @@ import '../models/workout.dart';
 import '../models/workout_log.dart';
 import '../providers/workout_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/rpe_selector.dart';
 
 class WorkoutSessionScreen extends StatefulWidget {
   final Workout template;
@@ -44,6 +45,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     final minutes = (_elapsed.inSeconds / 60).ceil().clamp(1, 999);
     final estimatedCalories = ((widget.template.calories / widget.template.minutes) * minutes).round();
 
+    final rpe = await _askRpe();
+    if (!mounted) return;
+
     await context.read<WorkoutProvider>().addLog(
           WorkoutLog(
             title: widget.template.title,
@@ -51,11 +55,62 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
             minutes: minutes,
             calories: estimatedCalories,
             dateTime: DateTime.now(),
+            rpe: rpe,
           ),
         );
 
     if (!mounted) return;
     setState(() => _finished = true);
+  }
+
+  /// Bottom sheet asking how hard the workout felt — optional, skippable.
+  Future<int?> _askRpe() async {
+    int? selected;
+    return showModalBottomSheet<int?>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        final colors = context.colors;
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) => Container(
+            padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Nice work!', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: colors.textPrimary)),
+                const SizedBox(height: 4),
+                Text(
+                  'Rating effort helps build a more useful training-load trend over time.',
+                  style: TextStyle(fontSize: 12.5, color: colors.textSecondary, height: 1.4),
+                ),
+                const SizedBox(height: 18),
+                RpeSelector(value: selected, onChanged: (v) => setSheetState(() => selected = v)),
+                const SizedBox(height: 20),
+                SizedBox(
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(ctx).pop(selected),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
+                    ),
+                    child: Text(selected == null ? 'Skip' : 'Save', style: const TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   String _format(Duration d) {

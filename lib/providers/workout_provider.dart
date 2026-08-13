@@ -59,6 +59,15 @@ class WorkoutProvider extends ChangeNotifier {
   int get weekCalories => _weekLogs.fold(0, (sum, l) => sum + l.calories);
   int get weekMinutes => _weekLogs.fold(0, (sum, l) => sum + l.minutes);
 
+  /// Sum of duration x RPE across the week's logs that have an RPE — a
+  /// simple relative training-load number, not a medical assessment. Null
+  /// if nothing this week has an RPE yet.
+  int? get weekTrainingLoad {
+    final rated = _weekLogs.where((l) => l.rpe != null);
+    if (rated.isEmpty) return null;
+    return rated.fold<int>(0, (sum, l) => sum + l.trainingLoad!);
+  }
+
   /// Consecutive days (ending today or yesterday) with at least one workout.
   int get streakDays {
     if (_logs.isEmpty) return 0;

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'providers/body_measurement_provider.dart';
 import 'providers/food_catalog_provider.dart';
 import 'providers/health_provider.dart';
 import 'providers/notification_provider.dart';
@@ -42,6 +43,7 @@ class FitnessTrackerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => UserProvider()..load()),
         ChangeNotifierProvider(create: (_) => WorkoutProvider()..load()),
         ChangeNotifierProvider(create: (_) => WeightProvider()..load()),
+        ChangeNotifierProvider(create: (_) => BodyMeasurementProvider()..load()),
         ChangeNotifierProvider(create: (_) => NutritionProvider()..load()),
         ChangeNotifierProvider(create: (_) => FoodCatalogProvider()..load()),
         ChangeNotifierProvider(create: (_) => HealthProvider()..init()),

@@ -5,6 +5,7 @@ import 'home_screen.dart';
 import 'profile_screen.dart';
 import 'progress_screen.dart';
 import 'workouts_screen.dart';
+import '../providers/body_measurement_provider.dart';
 import '../providers/food_catalog_provider.dart';
 import '../providers/nutrition_provider.dart';
 import '../providers/user_provider.dart';
@@ -54,6 +55,7 @@ class _MainShellState extends State<MainShell> {
       nutrition: context.read<NutritionProvider>(),
       catalog: context.read<FoodCatalogProvider>(),
       weight: context.read<WeightProvider>(),
+      bodyMeasurements: context.read<BodyMeasurementProvider>(),
     );
   }
 
