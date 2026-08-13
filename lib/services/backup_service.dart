@@ -54,7 +54,10 @@ class BackupService {
     await prefs.setString(_kLastBackupAt, DateTime.now().toIso8601String());
   }
 
-  static Future<Map<String, Object?>> _buildSnapshot({
+  /// Builds the same JSON-serializable snapshot used for local file backups
+  /// — exposed so CloudBackupService can push/pull the identical shape to
+  /// Firestore instead of a shared file.
+  static Future<Map<String, Object?>> buildSnapshot({
     required UserProvider user,
     required WorkoutProvider workouts,
     required NutritionProvider nutrition,
@@ -96,7 +99,7 @@ class BackupService {
     required BodyMeasurementProvider bodyMeasurements,
     required StrengthProvider strength,
   }) async {
-    final snapshot = await _buildSnapshot(
+    final snapshot = await buildSnapshot(
       user: user,
       workouts: workouts,
       nutrition: nutrition,
@@ -140,7 +143,31 @@ class BackupService {
   }) async {
     final content = await File(path).readAsString();
     final data = jsonDecode(content) as Map<String, dynamic>;
+    await restoreFromSnapshot(
+      data,
+      user: user,
+      workouts: workouts,
+      nutrition: nutrition,
+      catalog: catalog,
+      weight: weight,
+      bodyMeasurements: bodyMeasurements,
+      strength: strength,
+    );
+  }
 
+  /// Same restore logic as [restoreFromFile], but from an already-decoded
+  /// snapshot map — used both for local file restores and for
+  /// CloudBackupService restoring a Firestore document.
+  static Future<void> restoreFromSnapshot(
+    Map<String, dynamic> data, {
+    required UserProvider user,
+    required WorkoutProvider workouts,
+    required NutritionProvider nutrition,
+    required FoodCatalogProvider catalog,
+    required WeightProvider weight,
+    required BodyMeasurementProvider bodyMeasurements,
+    required StrengthProvider strength,
+  }) async {
     final profile = ((data['profile'] as Map?) ?? const {}).cast<String, Object?>();
     await user.restoreProfile(profile);
 

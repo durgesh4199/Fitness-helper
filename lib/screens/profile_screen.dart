@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../models/body_measurement_log.dart';
 import '../models/nutrition_targets.dart';
 import '../models/weight_log.dart';
+import '../providers/auth_provider.dart';
 import '../providers/body_measurement_provider.dart';
 import '../providers/food_catalog_provider.dart';
 import '../providers/health_provider.dart';
@@ -17,6 +18,7 @@ import '../providers/user_provider.dart';
 import '../providers/weight_provider.dart';
 import '../providers/workout_provider.dart';
 import '../services/backup_service.dart';
+import '../services/cloud_backup_service.dart';
 import '../services/health_report_service.dart';
 import '../theme/app_theme.dart';
 
@@ -28,6 +30,7 @@ class ProfileScreen extends StatelessWidget {
     final colors = context.colors;
     final user = context.watch<UserProvider>();
     final nutrition = context.watch<NutritionProvider>();
+    final auth = context.watch<AppAuthProvider>();
 
     return SafeArea(
       child: ListView(
@@ -71,6 +74,10 @@ class ProfileScreen extends StatelessWidget {
             _SettingItem(Icons.picture_as_pdf_outlined, 'Export health summary (PDF)', colors.secondary,
                 onTap: () => _shareHealthReport(context)),
           ]),
+          if (auth.isAvailable) ...[
+            const SizedBox(height: 14),
+            _CloudBackupSection(email: auth.email),
+          ],
           const SizedBox(height: 24),
           _sectionLabel(colors, 'Preferences'),
           const SizedBox(height: 10),
@@ -83,7 +90,8 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 10),
           _settingsGroup(context, colors, [
             _SettingItem(Icons.help_outline_rounded, 'Help center', colors.secondary),
-            _SettingItem(Icons.logout_rounded, 'Log out', Colors.redAccent),
+            if (auth.isAvailable)
+              _SettingItem(Icons.logout_rounded, 'Log out', Colors.redAccent, onTap: () => _confirmSignOut(context)),
           ]),
         ],
       ),
@@ -361,6 +369,25 @@ class ProfileScreen extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (_) => const _NotificationSettingsSheet(),
     );
+  }
+
+  Future<void> _confirmSignOut(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Log out?'),
+        content: const Text(
+          'Your data stays on this device (and in your last cloud backup, if you\'ve made one). '
+          'You\'ll need to sign in again to use the app.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Log out')),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    await context.read<AppAuthProvider>().signOut();
   }
 }
 
@@ -1317,6 +1344,173 @@ class _BackupSectionState extends State<_BackupSection> {
                     child: Icon(Icons.restore_rounded, color: colors.accentOrange, size: 20),
                   ),
                   title: Text('Restore from backup', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: colors.textPrimary)),
+                  trailing: Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Cloud counterpart to [_BackupSection] — only ever shown when
+/// AppAuthProvider.isAvailable is true, which (per the AuthGate in main.dart)
+/// also guarantees there's a signed-in user by the time this screen is
+/// reachable at all.
+class _CloudBackupSection extends StatefulWidget {
+  final String? email;
+  const _CloudBackupSection({required this.email});
+
+  @override
+  State<_CloudBackupSection> createState() => _CloudBackupSectionState();
+}
+
+class _CloudBackupSectionState extends State<_CloudBackupSection> {
+  final _cloud = CloudBackupService();
+  DateTime? _lastCloudBackup;
+  bool _loaded = false;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    final uid = context.read<AppAuthProvider>().user?.uid;
+    if (uid == null) return;
+    final t = await _cloud.lastCloudBackupAt(uid);
+    if (mounted) {
+      setState(() {
+        _lastCloudBackup = t;
+        _loaded = true;
+      });
+    }
+  }
+
+  String get _label {
+    if (_lastCloudBackup == null) return _loaded ? 'Never backed up to the cloud' : 'Checking cloud backup status…';
+    final days = DateTime.now().difference(_lastCloudBackup!).inDays;
+    if (days <= 0) return 'Backed up to the cloud today';
+    if (days == 1) return 'Backed up to the cloud yesterday';
+    return 'Backed up to the cloud $days days ago';
+  }
+
+  Future<void> _backupNow() async {
+    final uid = context.read<AppAuthProvider>().user?.uid;
+    if (uid == null || _busy) return;
+    setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await _cloud.backup(
+        uid: uid,
+        user: context.read<UserProvider>(),
+        workouts: context.read<WorkoutProvider>(),
+        nutrition: context.read<NutritionProvider>(),
+        catalog: context.read<FoodCatalogProvider>(),
+        weight: context.read<WeightProvider>(),
+        bodyMeasurements: context.read<BodyMeasurementProvider>(),
+        strength: context.read<StrengthProvider>(),
+      );
+      messenger.showSnackBar(const SnackBar(content: Text('Backed up to the cloud.')));
+      await _refresh();
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Cloud backup failed: $e')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _restore() async {
+    final uid = context.read<AppAuthProvider>().user?.uid;
+    if (uid == null || _busy) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Restore from cloud?'),
+        content: const Text(
+          'This replaces all your current workouts, food logs, custom foods, and '
+          'profile settings with your last cloud backup. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Restore')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await _cloud.restore(
+        uid: uid,
+        user: context.read<UserProvider>(),
+        workouts: context.read<WorkoutProvider>(),
+        nutrition: context.read<NutritionProvider>(),
+        catalog: context.read<FoodCatalogProvider>(),
+        weight: context.read<WeightProvider>(),
+        bodyMeasurements: context.read<BodyMeasurementProvider>(),
+        strength: context.read<StrengthProvider>(),
+      );
+      messenger.showSnackBar(const SnackBar(content: Text('Restored from the cloud.')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Restore failed: $e')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8, left: 2),
+          child: Text(
+            widget.email == null ? _label : '${widget.email} · $_label',
+            style: TextStyle(fontSize: 11.5, color: colors.textSecondary),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [BoxShadow(color: colors.shadow, blurRadius: 16, offset: const Offset(0, 6))],
+          ),
+          child: Material(
+            color: colors.surface,
+            clipBehavior: Clip.antiAlias,
+            borderRadius: BorderRadius.circular(20),
+            child: Column(
+              children: [
+                ListTile(
+                  onTap: _busy ? null : _backupNow,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: colors.accentBlue.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                    child: Icon(Icons.cloud_upload_outlined, color: colors.accentBlue, size: 20),
+                  ),
+                  title: Text('Back up to cloud', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: colors.textPrimary)),
+                  trailing: Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Divider(height: 1, color: colors.background),
+                ),
+                ListTile(
+                  onTap: _busy ? null : _restore,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: colors.accentBlue.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                    child: Icon(Icons.cloud_download_outlined, color: colors.accentBlue, size: 20),
+                  ),
+                  title: Text('Restore from cloud', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: colors.textPrimary)),
                   trailing: Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
                 ),
               ],

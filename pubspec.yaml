@@ -52,6 +52,10 @@ dependencies:
   flutter_local_notifications: ^22.2.0
   timezone: ^0.11.1
   pdf: ^3.11.1
+  firebase_core: ^4.13.0
+  firebase_auth: ^6.5.7
+  cloud_firestore: ^6.8.0
+  google_sign_in: ^7.2.0
 
 dev_dependencies:
   flutter_test:
@@ -64,6 +68,9 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.3
+  firebase_auth_mocks: ^0.15.2
+  fake_cloud_firestore: ^4.2.0
+  mock_exceptions: ^0.8.2
 
 # App icon generation config, used by: dart run flutter_launcher_icons
 # Source images live in assets/icon/ (generated via a purple-gradient
