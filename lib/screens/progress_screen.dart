@@ -78,6 +78,21 @@ class ProgressScreen extends StatelessWidget {
               ),
             ],
           ),
+          if (workouts.weekTrainingLoad != null) ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: StatCard(
+                    icon: Icons.speed_rounded,
+                    color: AppBrand.accentPink,
+                    value: '${workouts.weekTrainingLoad}',
+                    label: 'Training load (min × RPE)',
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 28),
           const SectionHeader(title: 'Body Weight'),
           const SizedBox(height: 14),

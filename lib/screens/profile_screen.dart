@@ -1,9 +1,12 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../models/body_measurement_log.dart';
 import '../models/nutrition_targets.dart';
 import '../models/weight_log.dart';
+import '../providers/body_measurement_provider.dart';
 import '../providers/food_catalog_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/nutrition_provider.dart';
@@ -37,6 +40,8 @@ class ProfileScreen extends StatelessWidget {
           _buildStatsRow(colors, user),
           const SizedBox(height: 24),
           const _WeightHistorySection(),
+          const SizedBox(height: 24),
+          const _WaistHistorySection(),
           const SizedBox(height: 24),
           _buildTargetsCard(colors, user, nutrition.todayTotals),
           const SizedBox(height: 28),
@@ -823,9 +828,51 @@ class _WeightHistorySection extends StatelessWidget {
                 _miniStat(colors, fmtChange(weeklyChange), '7d change', changeColor),
               ],
             ),
+            if (weight.logs.length >= 2) ...[
+              const SizedBox(height: 18),
+              SizedBox(height: 80, child: _trendChart(colors, weight.logs)),
+            ],
             const SizedBox(height: 14),
             ...weight.logs.take(3).map((l) => _entryRow(context, colors, l)),
           ],
+        ],
+      ),
+    );
+  }
+
+  /// Small sparkline-style trend of recent entries, oldest to newest —
+  /// shape only (no axis numbers), same spirit as the meal-impact chart.
+  Widget _trendChart(AppPalette colors, List<WeightLog> logs) {
+    final ordered = logs.reversed.toList(); // oldest -> newest
+    final spots = [for (var i = 0; i < ordered.length; i++) FlSpot(i.toDouble(), ordered[i].weight)];
+    final values = ordered.map((l) => l.weight);
+    final minY = values.reduce((a, b) => a < b ? a : b) - 0.5;
+    final maxY = values.reduce((a, b) => a > b ? a : b) + 0.5;
+
+    return LineChart(
+      LineChartData(
+        minY: minY,
+        maxY: maxY,
+        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+        titlesData: const FlTitlesData(show: false),
+        lineTouchData: const LineTouchData(enabled: false),
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            barWidth: 2.5,
+            color: colors.primary,
+            dotData: FlDotData(show: spots.length <= 12),
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [colors.primary.withValues(alpha: 0.25), colors.primary.withValues(alpha: 0.02)],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -903,6 +950,154 @@ class _WeightHistorySection extends StatelessWidget {
   }
 }
 
+/// Waist-circumference history — the "primary useful measurement" per the
+/// spec. Other body measurements (neck/chest/arms/thighs/hips) are stored in
+/// the same table but not yet exposed in this compact card.
+class _WaistHistorySection extends StatelessWidget {
+  const _WaistHistorySection();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final body = context.watch<BodyMeasurementProvider>();
+    final withWaist = body.logs.where((l) => l.waistCm != null).toList();
+
+    String fmt(double? v) => v == null ? '--' : '${v.toStringAsFixed(1)} cm';
+    String fmtChange(double? v) {
+      if (v == null) return '--';
+      final sign = v > 0 ? '+' : '';
+      return '$sign${v.toStringAsFixed(1)} cm';
+    }
+
+    final weeklyChange = body.waistWeeklyChange;
+    final changeColor = weeklyChange == null
+        ? colors.textSecondary
+        : weeklyChange <= 0
+            ? AppBrand.fiber
+            : AppBrand.accentOrange;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: colors.cardBorder),
+        boxShadow: [BoxShadow(color: colors.shadow, blurRadius: 16, offset: const Offset(0, 6))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: colors.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                child: Icon(Icons.straighten_rounded, color: colors.primary, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text('Waist History', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: colors.textPrimary)),
+              ),
+              TextButton.icon(
+                onPressed: () => _showLogWaistDialog(context),
+                icon: const Icon(Icons.add_rounded, size: 16),
+                label: const Text('Log waist'),
+                style: TextButton.styleFrom(foregroundColor: colors.primary, padding: const EdgeInsets.symmetric(horizontal: 8)),
+              ),
+            ],
+          ),
+          if (withWaist.isEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Waist circumference is a simple, useful trend to track alongside weight.',
+              style: TextStyle(fontSize: 12.5, color: colors.textSecondary, height: 1.4),
+            ),
+          ] else ...[
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                _miniStat(colors, fmt(withWaist.first.waistCm), 'Latest', colors.textPrimary),
+                _miniStat(colors, fmtChange(weeklyChange), '7d change', changeColor),
+              ],
+            ),
+            const SizedBox(height: 14),
+            ...withWaist.take(3).map((l) => _entryRow(context, colors, l)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _miniStat(AppPalette colors, String value, String label, Color valueColor) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(value, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: valueColor)),
+          const SizedBox(height: 2),
+          Text(label, style: TextStyle(fontSize: 10, color: colors.textSecondary)),
+        ],
+      ),
+    );
+  }
+
+  Widget _entryRow(BuildContext context, AppPalette colors, BodyMeasurementLog log) {
+    final d = log.dateTime;
+    final dateLabel = '${d.day}/${d.month}/${d.year}';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(dateLabel, style: TextStyle(fontSize: 12.5, color: colors.textSecondary)),
+          ),
+          Text('${log.waistCm!.toStringAsFixed(1)} cm', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+          const SizedBox(width: 6),
+          InkWell(
+            onTap: () => context.read<BodyMeasurementProvider>().deleteEntry(log.id!),
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(Icons.close_rounded, size: 15, color: colors.textSecondary.withValues(alpha: 0.7)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLogWaistDialog(BuildContext context) {
+    final bodyProvider = context.read<BodyMeasurementProvider>();
+    final controller = TextEditingController();
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Log waist measurement'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,1}'))],
+          decoration: const InputDecoration(suffixText: 'cm', hintText: 'e.g. 84.5'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () async {
+              final value = double.tryParse(controller.text.trim());
+              Navigator.of(ctx).pop();
+              if (value == null || value <= 0) return;
+              await bodyProvider.addEntry(waistCm: value);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _BackupSection extends StatefulWidget {
   const _BackupSection();
 
@@ -947,6 +1142,7 @@ class _BackupSectionState extends State<_BackupSection> {
       nutrition: context.read<NutritionProvider>(),
       catalog: context.read<FoodCatalogProvider>(),
       weight: context.read<WeightProvider>(),
+      bodyMeasurements: context.read<BodyMeasurementProvider>(),
     );
     await _refresh();
   }
@@ -981,6 +1177,7 @@ class _BackupSectionState extends State<_BackupSection> {
         nutrition: context.read<NutritionProvider>(),
         catalog: context.read<FoodCatalogProvider>(),
         weight: context.read<WeightProvider>(),
+        bodyMeasurements: context.read<BodyMeasurementProvider>(),
       );
       messenger.showSnackBar(const SnackBar(content: Text('Backup restored.')));
     } catch (e) {

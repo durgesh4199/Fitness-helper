@@ -1,5 +1,6 @@
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+import '../models/body_measurement_log.dart';
 import '../models/food_item.dart';
 import '../models/food_log.dart';
 import '../models/weight_log.dart';
@@ -21,13 +22,14 @@ class DatabaseService {
     final path = join(await getDatabasesPath(), 'fitness_tracker.db');
     return openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
         await db.execute(_createWorkoutLogs);
         await db.execute(_createFoodLogs);
         await db.execute(_createCustomFoods);
         await db.execute(_createWeightLogs);
         await db.execute(_createWaterLogs);
+        await db.execute(_createBodyMeasurementLogs);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -45,6 +47,11 @@ class DatabaseService {
           await db.execute(_createWeightLogs);
           await db.execute(_createWaterLogs);
         }
+        if (oldVersion < 6) {
+          // Additive only — existing tables/data are untouched.
+          await db.execute(_createBodyMeasurementLogs);
+          await db.execute('ALTER TABLE workout_logs ADD COLUMN rpe INTEGER');
+        }
       },
     );
   }
@@ -56,7 +63,8 @@ class DatabaseService {
       category TEXT NOT NULL,
       minutes INTEGER NOT NULL,
       calories INTEGER NOT NULL,
-      date_time TEXT NOT NULL
+      date_time TEXT NOT NULL,
+      rpe INTEGER
     )
   ''';
 
@@ -149,6 +157,24 @@ class DatabaseService {
       amount_ml INTEGER NOT NULL,
       date_time TEXT NOT NULL,
       source TEXT NOT NULL DEFAULT 'userEntered'
+    )
+  ''';
+
+  // Optional historical body measurements. Waist is the primary useful one
+  // (per the spec) but all fields are optional/nullable — a user might only
+  // ever log waist, or occasionally add the rest.
+  static const _createBodyMeasurementLogs = '''
+    CREATE TABLE body_measurement_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date_time TEXT NOT NULL,
+      waist_cm REAL,
+      neck_cm REAL,
+      chest_cm REAL,
+      arms_cm REAL,
+      thighs_cm REAL,
+      hips_cm REAL,
+      source TEXT NOT NULL DEFAULT 'userEntered',
+      notes TEXT
     )
   ''';
 
@@ -301,6 +327,33 @@ class DatabaseService {
       await txn.delete('water_logs');
       for (final log in logs) {
         await txn.insert('water_logs', log.toMap()..remove('id'));
+      }
+    });
+  }
+
+  // ---- Body measurement logs ----
+  Future<int> insertBodyMeasurementLog(BodyMeasurementLog log) async {
+    final db = await database;
+    return db.insert('body_measurement_logs', log.toMap()..remove('id'));
+  }
+
+  Future<List<BodyMeasurementLog>> getAllBodyMeasurementLogs() async {
+    final db = await database;
+    final rows = await db.query('body_measurement_logs', orderBy: 'date_time DESC');
+    return rows.map(BodyMeasurementLog.fromMap).toList();
+  }
+
+  Future<void> deleteBodyMeasurementLog(int id) async {
+    final db = await database;
+    await db.delete('body_measurement_logs', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> clearAndInsertBodyMeasurementLogs(List<BodyMeasurementLog> logs) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('body_measurement_logs');
+      for (final log in logs) {
+        await txn.insert('body_measurement_logs', log.toMap()..remove('id'));
       }
     });
   }

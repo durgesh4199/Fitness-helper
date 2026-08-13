@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:provider/provider.dart';
 import '../models/mock_data.dart';
+import '../models/water_log.dart';
 import '../providers/health_provider.dart';
 import '../providers/nutrition_provider.dart';
 import '../providers/user_provider.dart';
@@ -52,7 +54,9 @@ class HomeScreen extends StatelessWidget {
                   icon: Icons.directions_walk_rounded,
                   color: AppBrand.accentBlue,
                   value: health.steps?.toString() ?? '--',
-                  label: 'Steps today',
+                  label: (health.steps != null && health.stepGoal != null)
+                      ? '${((health.steps! / health.stepGoal!) * 100).clamp(0, 999).round()}% of ${health.stepGoal} goal'
+                      : 'Steps today',
                 ),
               ),
               const SizedBox(width: 14),
@@ -71,12 +75,12 @@ class HomeScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: GestureDetector(
-                  onTap: () => context.read<UserProvider>().addWater(250),
+                  onTap: () => _showWaterSheet(context),
                   child: StatCard(
                     icon: Icons.water_drop_rounded,
                     color: AppBrand.accentBlue,
                     value: '${(user.waterIntakeMl / 1000).toStringAsFixed(1)} L',
-                    label: 'Tap to add 250ml',
+                    label: 'Tap to log water',
                   ),
                 ),
               ),
@@ -117,7 +121,7 @@ class HomeScreen extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: _WorkoutRow(
                   title: l.title,
-                  subtitle: '${l.minutes} min · ${l.calories} kcal',
+                  subtitle: '${l.minutes} min · ${l.calories} kcal${l.rpe != null ? ' · RPE ${l.rpe}' : ''}',
                   icon: l.icon,
                   color: l.color,
                 ),
@@ -426,6 +430,146 @@ class _WorkoutRow extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+void _showWaterSheet(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => const _WaterQuickAddSheet(),
+  );
+}
+
+class _WaterQuickAddSheet extends StatefulWidget {
+  const _WaterQuickAddSheet();
+
+  @override
+  State<_WaterQuickAddSheet> createState() => _WaterQuickAddSheetState();
+}
+
+class _WaterQuickAddSheetState extends State<_WaterQuickAddSheet> {
+  final _customController = TextEditingController();
+  List<WaterLog>? _logs;
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<UserProvider>().allWaterLogs().then((logs) {
+      if (mounted) setState(() => _logs = logs);
+    });
+  }
+
+  @override
+  void dispose() {
+    _customController.dispose();
+    super.dispose();
+  }
+
+  /// Average daily total over the last 7 days that have any entry — days
+  /// with nothing logged aren't counted as zero, since that would just
+  /// reflect missing data rather than actually drinking nothing.
+  double? get _weeklyAverageMl {
+    final logs = _logs;
+    if (logs == null || logs.isEmpty) return null;
+    final cutoff = DateTime.now().subtract(const Duration(days: 7));
+    final byDay = <String, int>{};
+    for (final l in logs) {
+      if (l.dateTime.isBefore(cutoff)) continue;
+      final key = '${l.dateTime.year}-${l.dateTime.month}-${l.dateTime.day}';
+      byDay[key] = (byDay[key] ?? 0) + l.amountMl;
+    }
+    if (byDay.isEmpty) return null;
+    return byDay.values.reduce((a, b) => a + b) / byDay.length;
+  }
+
+  Future<void> _add(int ml) async {
+    await context.read<UserProvider>().addWater(ml);
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final user = context.watch<UserProvider>();
+    final avg = _weeklyAverageMl;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+      decoration: BoxDecoration(color: colors.surface, borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Log water', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: colors.textPrimary)),
+          const SizedBox(height: 4),
+          Text(
+            avg == null
+                ? 'Today: ${(user.waterIntakeMl / 1000).toStringAsFixed(1)} L'
+                : 'Today: ${(user.waterIntakeMl / 1000).toStringAsFixed(1)} L · 7-day avg: ${(avg / 1000).toStringAsFixed(1)} L',
+            style: TextStyle(fontSize: 12.5, color: colors.textSecondary),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              for (final ml in [100, 250, 500]) ...[
+                Expanded(child: _amountButton(colors, ml)),
+                if (ml != 500) const SizedBox(width: 10),
+              ],
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _customController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w600),
+                  decoration: InputDecoration(
+                    hintText: 'Custom amount (ml)',
+                    hintStyle: TextStyle(color: colors.textSecondary),
+                    filled: true,
+                    fillColor: colors.background,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              TextButton(
+                onPressed: () {
+                  final ml = int.tryParse(_customController.text.trim());
+                  if (ml != null && ml > 0) _add(ml);
+                },
+                style: TextButton.styleFrom(
+                  backgroundColor: colors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                child: const Text('Add', style: TextStyle(fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _amountButton(AppPalette colors, int ml) {
+    return OutlinedButton(
+      onPressed: () => _add(ml),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        side: BorderSide(color: colors.primary.withValues(alpha: 0.3)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      child: Text('+$ml ml', style: TextStyle(color: colors.primary, fontWeight: FontWeight.w700, fontSize: 13)),
     );
   }
 }
