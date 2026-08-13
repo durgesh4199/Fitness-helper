@@ -5,22 +5,31 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/food_item.dart';
 import '../models/food_log.dart';
+import '../models/water_log.dart';
+import '../models/weight_log.dart';
 import '../models/workout_log.dart';
 import '../providers/food_catalog_provider.dart';
 import '../providers/nutrition_provider.dart';
 import '../providers/user_provider.dart';
+import '../providers/weight_provider.dart';
 import '../providers/workout_provider.dart';
 
 /// Exports/imports all user data (profile, workout logs, food logs, custom
-/// foods) as a single JSON file, shared via the native share sheet so it can
-/// be saved somewhere that survives an app uninstall (Drive, email, Files) —
-/// unlike the app's own storage, which Android/iOS wipe on uninstall.
+/// foods, weight history, water history) as a single JSON file, shared via
+/// the native share sheet so it can be saved somewhere that survives an app
+/// uninstall (Drive, email, Files) — unlike the app's own storage, which
+/// Android/iOS wipe on uninstall.
 class BackupService {
   BackupService._();
 
   static const _kLastBackupAt = 'last_backup_at';
   static const autoBackupInterval = Duration(days: 7);
-  static const _formatVersion = 1;
+
+  // Bumped whenever the backup JSON shape changes. `restoreFromFile` treats
+  // any missing key as "not present in this backup" (defaults to empty/null)
+  // rather than failing, so older backups keep restoring what they contain.
+  static const _schemaVersion = 2;
+  static const _appVersion = '1.0.0';
 
   /// Whether enough time has passed since the last backup (or none has ever
   /// been taken) to trigger another automatic one.
@@ -41,19 +50,27 @@ class BackupService {
     await prefs.setString(_kLastBackupAt, DateTime.now().toIso8601String());
   }
 
-  static Map<String, Object?> _buildSnapshot({
+  static Future<Map<String, Object?>> _buildSnapshot({
     required UserProvider user,
     required WorkoutProvider workouts,
     required NutritionProvider nutrition,
     required FoodCatalogProvider catalog,
-  }) {
+    required WeightProvider weight,
+  }) async {
+    final waterLogs = await user.allWaterLogs();
     return {
-      'formatVersion': _formatVersion,
+      'schemaVersion': _schemaVersion,
+      'appVersion': _appVersion,
+      'createdAt': DateTime.now().toIso8601String(),
+      // Kept for backward compatibility with the pre-schema-version format.
+      'formatVersion': 1,
       'exportedAt': DateTime.now().toIso8601String(),
       'profile': user.toBackupMap(),
       'workoutLogs': workouts.logs.map((l) => l.toMap()).toList(),
       'foodLogs': nutrition.logs.map((l) => l.toMap()).toList(),
       'customFoods': catalog.customItems.map((f) => f.toMap()).toList(),
+      'weightLogs': weight.logs.map((l) => l.toMap()).toList(),
+      'waterLogs': waterLogs.map((l) => l.toMap()).toList(),
     };
   }
 
@@ -67,8 +84,9 @@ class BackupService {
     required WorkoutProvider workouts,
     required NutritionProvider nutrition,
     required FoodCatalogProvider catalog,
+    required WeightProvider weight,
   }) async {
-    final snapshot = _buildSnapshot(user: user, workouts: workouts, nutrition: nutrition, catalog: catalog);
+    final snapshot = await _buildSnapshot(user: user, workouts: workouts, nutrition: nutrition, catalog: catalog, weight: weight);
     final json = const JsonEncoder.withIndent('  ').convert(snapshot);
 
     final dir = await getTemporaryDirectory();
@@ -82,19 +100,23 @@ class BackupService {
       subject: 'Fitness Tracker backup',
       text: 'Your Fitness Tracker data backup from $stamp. Keep this file '
           'somewhere safe — restoring it will bring back your workouts, '
-          'food logs, and profile even after reinstalling the app.',
+          'food logs, weight history, and profile even after reinstalling '
+          'the app.',
     );
   }
 
   /// Reads a previously exported backup file and restores it into the app,
-  /// replacing all current workout logs, food logs, custom foods, and
-  /// profile settings.
+  /// replacing all current workout logs, food logs, custom foods, weight
+  /// logs, water logs, and profile settings. Any field missing from an
+  /// older-format backup is simply left untouched/empty rather than failing
+  /// the whole restore.
   static Future<void> restoreFromFile({
     required String path,
     required UserProvider user,
     required WorkoutProvider workouts,
     required NutritionProvider nutrition,
     required FoodCatalogProvider catalog,
+    required WeightProvider weight,
   }) async {
     final content = await File(path).readAsString();
     final data = jsonDecode(content) as Map<String, dynamic>;
@@ -116,5 +138,17 @@ class BackupService {
         .map((m) => FoodItem.fromMap((m as Map).cast<String, Object?>()))
         .toList();
     await catalog.restoreCustomFoods(customFoods);
+
+    // Both added in schema v2 — absent entirely in older backups, which is
+    // fine: restoreLogs/restoreWaterLogs just clear to empty in that case.
+    final weightLogs = ((data['weightLogs'] as List?) ?? const [])
+        .map((m) => WeightLog.fromMap((m as Map).cast<String, Object?>()))
+        .toList();
+    await weight.restoreLogs(weightLogs);
+
+    final waterLogs = ((data['waterLogs'] as List?) ?? const [])
+        .map((m) => WaterLog.fromMap((m as Map).cast<String, Object?>()))
+        .toList();
+    await user.restoreWaterLogs(waterLogs);
   }
 }

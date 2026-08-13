@@ -429,6 +429,7 @@ class _GlucoseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final curve = nutrition.glucoseCurve(diabetic: isDiabetic);
+    final estimate = nutrition.mealImpactEstimate(diabetic: isDiabetic);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
@@ -453,22 +454,22 @@ class _GlucoseCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Sugar Response', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: colors.textPrimary)),
-                    Text('Estimated glucose after meals', style: TextStyle(fontSize: 11.5, color: colors.textSecondary)),
+                    Text('Meal Impact Estimate', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: colors.textPrimary)),
+                    Text('How today\'s meals may affect glucose response', style: TextStyle(fontSize: 11.5, color: colors.textSecondary)),
                   ],
                 ),
               ),
-              if (curve.isNotEmpty) _statusChip(),
+              if (estimate.hasData) _levelChip(estimate.level),
             ],
           ),
           const SizedBox(height: 16),
-          if (curve.isEmpty)
+          if (!estimate.hasData)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Center(
                 child: Text(
                   isToday
-                      ? 'Log a meal with carbs or sugar to see\nyour estimated glucose curve.'
+                      ? 'Log a meal with carbs or sugar to see\nyour estimated meal impact.'
                       : 'No carbs or sugar logged on this day.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12.5, color: colors.textSecondary, height: 1.4),
@@ -478,16 +479,21 @@ class _GlucoseCard extends StatelessWidget {
           else ...[
             Row(
               children: [
-                _stat(isToday ? 'Now' : 'End of day', '${nutrition.currentGlucose(diabetic: isDiabetic).round()}', 'mg/dL', colors.primary),
-                const SizedBox(width: 20),
-                _stat('Peak', '${nutrition.peakGlucose(diabetic: isDiabetic).round()}', 'mg/dL', AppBrand.carbs),
+                _breakdownStat('Carb load', estimate.carbLoad, colors),
+                _breakdownStat('Fiber', estimate.fiber, colors),
+                _breakdownStat('Sugar', estimate.sugar, colors),
+                _breakdownStat('Portion', estimate.portionSize, colors),
               ],
             ),
-            const SizedBox(height: 16),
-            SizedBox(height: 150, child: _chart(curve)),
-            const SizedBox(height: 6),
+            const SizedBox(height: 10),
+            Text('Confidence: ${estimate.confidence}', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: colors.textSecondary)),
+            if (curve.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              SizedBox(height: 120, child: _chart(curve)),
+            ],
+            const SizedBox(height: 10),
             Text(
-              'Estimate from logged carbs & sugar — not a medical reading.',
+              MealImpactEstimate.disclaimer,
               style: TextStyle(fontSize: 10.5, color: colors.textSecondary.withValues(alpha: 0.8), fontStyle: FontStyle.italic),
             ),
           ],
@@ -496,28 +502,26 @@ class _GlucoseCard extends StatelessWidget {
     );
   }
 
-  Widget _statusChip() {
-    final status = nutrition.glucoseStatus(diabetic: isDiabetic);
-    final spiking = status == 'Spiking' || status == 'Rising';
-    final color = spiking ? AppBrand.accentOrange : AppBrand.fiber;
+  Widget _levelChip(MealImpactLevel level) {
+    final elevated = level == MealImpactLevel.high || level == MealImpactLevel.veryHigh;
+    final color = elevated ? AppBrand.accentOrange : AppBrand.fiber;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(20)),
-      child: Text(status, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: color)),
+      child: Text(level.label.toUpperCase(), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: color)),
     );
   }
 
-  Widget _stat(String label, String value, String unit, Color color) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: color)),
-        const SizedBox(width: 3),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 3),
-          child: Text('$unit  $label', style: TextStyle(fontSize: 11, color: colors.textSecondary)),
-        ),
-      ],
+  Widget _breakdownStat(String label, String value, AppPalette colors) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: colors.textPrimary)),
+          const SizedBox(height: 2),
+          Text(label, style: TextStyle(fontSize: 10.5, color: colors.textSecondary)),
+        ],
+      ),
     );
   }
 
@@ -544,17 +548,10 @@ class _GlucoseCard extends StatelessWidget {
         ),
         borderData: FlBorderData(show: false),
         titlesData: FlTitlesData(
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 30,
-              interval: 30,
-              getTitlesWidget: (v, meta) => Text(
-                v.toInt().toString(),
-                style: TextStyle(fontSize: 9.5, color: colors.textSecondary),
-              ),
-            ),
-          ),
+          // No numeric y-axis — this chart shows the *shape* of the estimated
+          // response over the day, not an absolute value that could be
+          // mistaken for a real glucose reading.
+          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           bottomTitles: AxisTitles(

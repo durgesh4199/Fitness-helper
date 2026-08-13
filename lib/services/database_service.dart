@@ -2,6 +2,8 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import '../models/food_item.dart';
 import '../models/food_log.dart';
+import '../models/weight_log.dart';
+import '../models/water_log.dart';
 import '../models/workout_log.dart';
 
 class DatabaseService {
@@ -19,11 +21,13 @@ class DatabaseService {
     final path = join(await getDatabasesPath(), 'fitness_tracker.db');
     return openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: (db, version) async {
         await db.execute(_createWorkoutLogs);
         await db.execute(_createFoodLogs);
         await db.execute(_createCustomFoods);
+        await db.execute(_createWeightLogs);
+        await db.execute(_createWaterLogs);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -35,6 +39,11 @@ class DatabaseService {
         }
         if (oldVersion < 4) {
           await db.execute(_createCustomFoods);
+        }
+        if (oldVersion < 5) {
+          // Additive only — existing tables/data are untouched.
+          await db.execute(_createWeightLogs);
+          await db.execute(_createWaterLogs);
         }
       },
     );
@@ -113,6 +122,33 @@ class DatabaseService {
       vitamin_c REAL NOT NULL DEFAULT 0,
       caffeine REAL NOT NULL DEFAULT 0,
       UNIQUE(name, category)
+    )
+  ''';
+
+  // Historical weight (and optional body-fat) entries — separate from the
+  // single "current weight" kept on the profile, so trends/averages/charts
+  // are possible. `source` distinguishes a real entry from anything the app
+  // might import automatically in the future (see HealthDataSource).
+  static const _createWeightLogs = '''
+    CREATE TABLE weight_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      weight REAL NOT NULL,
+      body_fat REAL,
+      date_time TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'userEntered',
+      notes TEXT
+    )
+  ''';
+
+  // Individual water-intake entries. `UserProvider.waterIntakeMl` remains
+  // the fast running-total for "today" (SharedPreferences); these rows exist
+  // to support history/weekly-average features without changing that.
+  static const _createWaterLogs = '''
+    CREATE TABLE water_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      amount_ml INTEGER NOT NULL,
+      date_time TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'userEntered'
     )
   ''';
 
@@ -211,6 +247,60 @@ class DatabaseService {
       await txn.delete('custom_foods');
       for (final item in items) {
         await txn.insert('custom_foods', item.toMap()..remove('id'));
+      }
+    });
+  }
+
+  // ---- Weight logs ----
+  Future<int> insertWeightLog(WeightLog log) async {
+    final db = await database;
+    return db.insert('weight_logs', log.toMap()..remove('id'));
+  }
+
+  Future<List<WeightLog>> getAllWeightLogs() async {
+    final db = await database;
+    final rows = await db.query('weight_logs', orderBy: 'date_time DESC');
+    return rows.map(WeightLog.fromMap).toList();
+  }
+
+  Future<void> deleteWeightLog(int id) async {
+    final db = await database;
+    await db.delete('weight_logs', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> clearAndInsertWeightLogs(List<WeightLog> logs) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('weight_logs');
+      for (final log in logs) {
+        await txn.insert('weight_logs', log.toMap()..remove('id'));
+      }
+    });
+  }
+
+  // ---- Water logs ----
+  Future<int> insertWaterLog(WaterLog log) async {
+    final db = await database;
+    return db.insert('water_logs', log.toMap()..remove('id'));
+  }
+
+  Future<List<WaterLog>> getAllWaterLogs() async {
+    final db = await database;
+    final rows = await db.query('water_logs', orderBy: 'date_time DESC');
+    return rows.map(WaterLog.fromMap).toList();
+  }
+
+  Future<void> deleteWaterLog(int id) async {
+    final db = await database;
+    await db.delete('water_logs', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> clearAndInsertWaterLogs(List<WaterLog> logs) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('water_logs');
+      for (final log in logs) {
+        await txn.insert('water_logs', log.toMap()..remove('id'));
       }
     });
   }
