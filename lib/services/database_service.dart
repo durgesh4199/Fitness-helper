@@ -4,6 +4,7 @@ import '../models/body_measurement_log.dart';
 import '../models/daily_health_log.dart';
 import '../models/food_item.dart';
 import '../models/food_log.dart';
+import '../models/strength_set.dart';
 import '../models/weight_log.dart';
 import '../models/water_log.dart';
 import '../models/workout_log.dart';
@@ -23,7 +24,7 @@ class DatabaseService {
     final path = join(await getDatabasesPath(), 'fitness_tracker.db');
     return openDatabase(
       path,
-      version: 8,
+      version: 9,
       onCreate: (db, version) async {
         await db.execute(_createWorkoutLogs);
         await db.execute(_createFoodLogs);
@@ -32,6 +33,7 @@ class DatabaseService {
         await db.execute(_createWaterLogs);
         await db.execute(_createBodyMeasurementLogs);
         await db.execute(_createDailyHealthLogs);
+        await db.execute(_createStrengthSets);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -68,6 +70,10 @@ class DatabaseService {
         if (oldVersion < 8) {
           // Additive only — existing tables/data are untouched.
           await db.execute(_createDailyHealthLogs);
+        }
+        if (oldVersion < 9) {
+          // Additive only — existing tables/data are untouched.
+          await db.execute(_createStrengthSets);
         }
       },
     );
@@ -212,6 +218,22 @@ class DatabaseService {
       steps INTEGER,
       sleep_minutes INTEGER,
       source TEXT NOT NULL DEFAULT 'healthConnect'
+    )
+  ''';
+
+  // Individual sets (exercise/reps/weight) within a strength workout log.
+  // `workout_log_id` is a loose reference to workout_logs.id — not a real
+  // FOREIGN KEY, so deleting a workout requires explicitly calling
+  // deleteStrengthSetsForWorkout too (see WorkoutsScreen).
+  static const _createStrengthSets = '''
+    CREATE TABLE strength_sets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      workout_log_id INTEGER NOT NULL,
+      exercise_name TEXT NOT NULL,
+      set_index INTEGER NOT NULL,
+      reps INTEGER NOT NULL,
+      weight_kg REAL,
+      date_time TEXT NOT NULL
     )
   ''';
 
@@ -412,5 +434,50 @@ class DatabaseService {
   Future<void> clearDailyHealthLogs() async {
     final db = await database;
     await db.delete('daily_health_logs');
+  }
+
+  // ---- Strength sets ----
+  Future<int> insertStrengthSet(StrengthSet set) async {
+    final db = await database;
+    return db.insert('strength_sets', set.toMap()..remove('id'));
+  }
+
+  Future<List<StrengthSet>> getStrengthSetsForWorkout(int workoutLogId) async {
+    final db = await database;
+    final rows = await db.query(
+      'strength_sets',
+      where: 'workout_log_id = ?',
+      whereArgs: [workoutLogId],
+      orderBy: 'set_index ASC',
+    );
+    return rows.map(StrengthSet.fromMap).toList();
+  }
+
+  Future<List<StrengthSet>> getAllStrengthSets() async {
+    final db = await database;
+    final rows = await db.query('strength_sets', orderBy: 'date_time DESC');
+    return rows.map(StrengthSet.fromMap).toList();
+  }
+
+  Future<void> deleteStrengthSet(int id) async {
+    final db = await database;
+    await db.delete('strength_sets', where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Cleans up all sets belonging to a workout — call this alongside
+  /// [deleteLog] since there's no real foreign key cascade here.
+  Future<void> deleteStrengthSetsForWorkout(int workoutLogId) async {
+    final db = await database;
+    await db.delete('strength_sets', where: 'workout_log_id = ?', whereArgs: [workoutLogId]);
+  }
+
+  Future<void> clearAndInsertStrengthSets(List<StrengthSet> sets) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('strength_sets');
+      for (final set in sets) {
+        await txn.insert('strength_sets', set.toMap()..remove('id'));
+      }
+    });
   }
 }

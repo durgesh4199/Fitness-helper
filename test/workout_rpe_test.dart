@@ -56,5 +56,27 @@ void main() {
 
       expect(provider.weekTrainingLoad, 30 * 6 + 45 * 8);
     });
+
+    test('addLog returns the new row\'s id', () async {
+      final id = await provider.addLog(WorkoutLog(title: 'Run', category: 'Cardio', minutes: 30, calories: 250, dateTime: DateTime.now()));
+      expect(id, isNotNull);
+      expect(provider.logs.first.id, id);
+    });
+  });
+
+  group('WorkoutProvider.recoverySignal', () {
+    late WorkoutProvider provider;
+
+    setUp(() async {
+      provider = WorkoutProvider();
+      await provider.load();
+      for (final log in List.of(provider.logs)) {
+        if (log.id != null) await provider.deleteLog(log.id!);
+      }
+    });
+
+    test('is null with no training streak', () async {
+      expect(provider.recoverySignal, isNull);
+    });
   });
 }

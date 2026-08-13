@@ -6,12 +6,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/body_measurement_log.dart';
 import '../models/food_item.dart';
 import '../models/food_log.dart';
+import '../models/strength_set.dart';
 import '../models/water_log.dart';
 import '../models/weight_log.dart';
 import '../models/workout_log.dart';
 import '../providers/body_measurement_provider.dart';
 import '../providers/food_catalog_provider.dart';
 import '../providers/nutrition_provider.dart';
+import '../providers/strength_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/weight_provider.dart';
 import '../providers/workout_provider.dart';
@@ -30,7 +32,7 @@ class BackupService {
   // Bumped whenever the backup JSON shape changes. `restoreFromFile` treats
   // any missing key as "not present in this backup" (defaults to empty/null)
   // rather than failing, so older backups keep restoring what they contain.
-  static const _schemaVersion = 3;
+  static const _schemaVersion = 4;
   static const _appVersion = '1.0.0';
 
   /// Whether enough time has passed since the last backup (or none has ever
@@ -59,6 +61,7 @@ class BackupService {
     required FoodCatalogProvider catalog,
     required WeightProvider weight,
     required BodyMeasurementProvider bodyMeasurements,
+    required StrengthProvider strength,
   }) async {
     final waterLogs = await user.allWaterLogs();
     return {
@@ -75,6 +78,7 @@ class BackupService {
       'weightLogs': weight.logs.map((l) => l.toMap()).toList(),
       'waterLogs': waterLogs.map((l) => l.toMap()).toList(),
       'bodyMeasurementLogs': bodyMeasurements.logs.map((l) => l.toMap()).toList(),
+      'strengthSets': strength.sets.map((s) => s.toMap()).toList(),
     };
   }
 
@@ -90,6 +94,7 @@ class BackupService {
     required FoodCatalogProvider catalog,
     required WeightProvider weight,
     required BodyMeasurementProvider bodyMeasurements,
+    required StrengthProvider strength,
   }) async {
     final snapshot = await _buildSnapshot(
       user: user,
@@ -98,6 +103,7 @@ class BackupService {
       catalog: catalog,
       weight: weight,
       bodyMeasurements: bodyMeasurements,
+      strength: strength,
     );
     final json = const JsonEncoder.withIndent('  ').convert(snapshot);
 
@@ -130,6 +136,7 @@ class BackupService {
     required FoodCatalogProvider catalog,
     required WeightProvider weight,
     required BodyMeasurementProvider bodyMeasurements,
+    required StrengthProvider strength,
   }) async {
     final content = await File(path).readAsString();
     final data = jsonDecode(content) as Map<String, dynamic>;
@@ -169,5 +176,11 @@ class BackupService {
         .map((m) => BodyMeasurementLog.fromMap((m as Map).cast<String, Object?>()))
         .toList();
     await bodyMeasurements.restoreLogs(bodyMeasurementLogs);
+
+    // Added in schema v4.
+    final strengthSets = ((data['strengthSets'] as List?) ?? const [])
+        .map((m) => StrengthSet.fromMap((m as Map).cast<String, Object?>()))
+        .toList();
+    await strength.restoreSets(strengthSets);
   }
 }

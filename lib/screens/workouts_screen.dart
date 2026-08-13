@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/mock_data.dart';
+import '../models/recovery_signal.dart';
+import '../models/strength_progress.dart';
 import '../models/workout.dart';
 import '../models/workout_log.dart';
+import '../providers/strength_provider.dart';
 import '../providers/workout_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/section_header.dart';
 import 'add_workout_screen.dart';
+import 'log_sets_screen.dart';
 import 'workout_session_screen.dart';
 
 String _dayLabel(DateTime date) {
@@ -36,7 +40,10 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
     final filtered = _selectedCategory == 'All'
         ? MockData.workouts
         : MockData.workouts.where((w) => w.category == _selectedCategory).toList();
-    final logs = context.watch<WorkoutProvider>().logs;
+    final workoutProvider = context.watch<WorkoutProvider>();
+    final logs = workoutProvider.logs;
+    final recovery = workoutProvider.recoverySignal;
+    final progress = context.watch<StrengthProvider>().progress;
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -61,6 +68,10 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
               'Pick a category and get moving',
               style: TextStyle(fontSize: 14, color: colors.textSecondary),
             ),
+            if (recovery != null) ...[
+              const SizedBox(height: 18),
+              _RecoveryCard(signal: recovery, colors: colors),
+            ],
             const SizedBox(height: 20),
             SizedBox(
               height: 104,
@@ -104,6 +115,22 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
                   child: Text('No workouts in this category yet.', style: TextStyle(color: colors.textSecondary)),
                 ),
               ),
+            if (progress.isNotEmpty) ...[
+              const SizedBox(height: 28),
+              const SectionHeader(title: 'Exercise Progress'),
+              const SizedBox(height: 14),
+              ...progress.map((p) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _ProgressTile(progress: p, colors: colors),
+                  )),
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  ProgressiveOverloadEngine.disclaimer,
+                  style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: colors.textSecondary),
+                ),
+              ),
+            ],
             if (logs.isNotEmpty) ...[
               const SizedBox(height: 28),
               const SectionHeader(title: 'History'),
@@ -143,7 +170,10 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
           child: Dismissible(
             key: ValueKey(log.id),
             direction: DismissDirection.endToStart,
-            onDismissed: (_) => context.read<WorkoutProvider>().deleteLog(log.id!),
+            onDismissed: (_) {
+              context.read<WorkoutProvider>().deleteLog(log.id!);
+              context.read<StrengthProvider>().deleteSetsForWorkout(log.id!);
+            },
             background: Container(
               alignment: Alignment.centerRight,
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -165,9 +195,11 @@ class _HistoryTile extends StatelessWidget {
 
   const _HistoryTile({required this.log, required this.colors});
 
+  bool get _isStrength => log.category == 'Strength';
+
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final content = Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: colors.surface,
@@ -203,8 +235,21 @@ class _HistoryTile extends StatelessWidget {
             DateFormat('h:mm a').format(log.dateTime),
             style: TextStyle(fontSize: 12, color: colors.textSecondary),
           ),
+          if (_isStrength) ...[
+            const SizedBox(width: 6),
+            Icon(Icons.chevron_right_rounded, size: 18, color: colors.textSecondary),
+          ],
         ],
       ),
+    );
+
+    if (!_isStrength || log.id == null) return content;
+
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => LogSetsScreen(workoutLogId: log.id!, workoutTitle: log.title)),
+      ),
+      child: content,
     );
   }
 }
@@ -320,6 +365,106 @@ class _CategoryChip extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _RecoveryCard extends StatelessWidget {
+  final RecoverySignal signal;
+  final AppPalette colors;
+
+  const _RecoveryCard({required this.signal, required this.colors});
+
+  @override
+  Widget build(BuildContext context) {
+    final strong = signal.level == RecoveryLevel.restRecommended;
+    final accent = strong ? Colors.deepOrange : colors.secondary;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: accent.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.self_improvement_rounded, color: accent, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(signal.title, style: TextStyle(fontWeight: FontWeight.w800, color: colors.textPrimary)),
+                const SizedBox(height: 4),
+                Text(signal.message, style: TextStyle(fontSize: 12.5, color: colors.textSecondary)),
+                const SizedBox(height: 6),
+                Text(
+                  RecoverySignal.disclaimer,
+                  style: TextStyle(fontSize: 10.5, fontStyle: FontStyle.italic, color: colors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProgressTile extends StatelessWidget {
+  final ExerciseProgress progress;
+  final AppPalette colors;
+
+  const _ProgressTile({required this.progress, required this.colors});
+
+  IconData get _icon {
+    switch (progress.trend) {
+      case ProgressTrend.up:
+        return Icons.trending_up_rounded;
+      case ProgressTrend.down:
+        return Icons.trending_down_rounded;
+      case ProgressTrend.flat:
+        return Icons.trending_flat_rounded;
+    }
+  }
+
+  Color get _color {
+    switch (progress.trend) {
+      case ProgressTrend.up:
+        return Colors.green;
+      case ProgressTrend.down:
+        return Colors.redAccent;
+      case ProgressTrend.flat:
+        return colors.textSecondary;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: colors.shadow, blurRadius: 12, offset: const Offset(0, 4))],
+      ),
+      child: Row(
+        children: [
+          Icon(_icon, color: _color, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(progress.exerciseName, style: TextStyle(fontWeight: FontWeight.w700, color: colors.textPrimary)),
+                const SizedBox(height: 2),
+                Text(progress.message, style: TextStyle(fontSize: 12.5, color: colors.textSecondary)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
