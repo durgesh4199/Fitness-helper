@@ -12,3 +12,7 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# Firebase config — see docs/FIREBASE_SETUP.md. Not committed here since
+# this checkout doesn't include a real Firebase project; add your own.
+app/google-services.json

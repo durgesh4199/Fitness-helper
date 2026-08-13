@@ -1,0 +1,9 @@
+# Copy this file to android/key.properties (which is gitignored) and fill
+# in your real values to enable release signing — see docs/FIREBASE_SETUP.md.
+# Without this file, release builds keep signing with the debug key, exactly
+# as they did before.
+storePassword=
+keyPassword=
+keyAlias=
+# Path is resolved relative to android/app/.
+storeFile=
