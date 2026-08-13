@@ -163,6 +163,11 @@ class FoodCatalogProvider extends ChangeNotifier {
         calcium: _num(cell(row, 'calcium')) ?? 0,
         vitaminC: _num(cell(row, 'vitaminc')) ?? 0,
         caffeine: _num(cell(row, 'caffeine')) ?? 0,
+        // Left null (unknown) rather than defaulted to 0 when the column is
+        // missing or blank — these are optional, best-effort fields.
+        magnesium: _num(cell(row, 'magnesium')),
+        potassium: _num(cell(row, 'potassium')),
+        zinc: _num(cell(row, 'zinc')),
       );
 
       final wasInsert = await _db.upsertCustomFood(item);

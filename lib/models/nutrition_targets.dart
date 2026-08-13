@@ -11,7 +11,9 @@ import '../providers/user_provider.dart';
 /// - Fiber: ~14 g per 1000 kcal.
 /// - Sugar: WHO free-sugar guidance (<10% of energy).
 /// - Water: ~35 ml per kg.
-/// - Calcium / Iron / Vitamin C: RDA by age and sex.
+/// - Calcium / Iron / Vitamin C / Magnesium / Potassium / Zinc: published
+///   RDA/AI guideline values by age and sex (NIH/IOM), not derived from the
+///   user's own data.
 class NutritionTargets {
   final int calories;
   final int protein; // g
@@ -23,6 +25,9 @@ class NutritionTargets {
   final int calcium; // mg
   final int iron; // mg
   final int vitaminC; // mg
+  final int magnesium; // mg
+  final int potassium; // mg
+  final int zinc; // mg
   final String goalLabel; // "Lose weight" | "Maintain" | "Gain weight"
 
   const NutritionTargets({
@@ -36,6 +41,9 @@ class NutritionTargets {
     required this.calcium,
     required this.iron,
     required this.vitaminC,
+    required this.magnesium,
+    required this.potassium,
+    required this.zinc,
     required this.goalLabel,
   });
 
@@ -100,6 +108,14 @@ class NutritionTargets {
     final iron = (sex == Sex.female && age >= 19 && age <= 50) ? 18 : 8;
     final vitaminC = sex == Sex.male ? 90 : 75;
 
+    // Published adult RDA (magnesium, zinc) / AI (potassium) — NIH Office
+    // of Dietary Supplements guideline values, not per-user calculations.
+    final magnesium = age <= 18
+        ? (sex == Sex.male ? 410 : 360)
+        : (sex == Sex.male ? (age >= 31 ? 420 : 400) : (age >= 31 ? 320 : 310));
+    final potassium = sex == Sex.male ? 3400 : 2600;
+    final zinc = sex == Sex.male ? 11 : 8;
+
     return NutritionTargets(
       calories: calories.round(),
       protein: protein,
@@ -111,6 +127,9 @@ class NutritionTargets {
       calcium: calcium,
       iron: iron,
       vitaminC: vitaminC,
+      magnesium: magnesium,
+      potassium: potassium,
+      zinc: zinc,
       goalLabel: goalLabel,
     );
   }

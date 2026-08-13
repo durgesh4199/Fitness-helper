@@ -22,7 +22,7 @@ class DatabaseService {
     final path = join(await getDatabasesPath(), 'fitness_tracker.db');
     return openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: (db, version) async {
         await db.execute(_createWorkoutLogs);
         await db.execute(_createFoodLogs);
@@ -51,6 +51,17 @@ class DatabaseService {
           // Additive only — existing tables/data are untouched.
           await db.execute(_createBodyMeasurementLogs);
           await db.execute('ALTER TABLE workout_logs ADD COLUMN rpe INTEGER');
+        }
+        if (oldVersion < 7) {
+          // Additive, nullable-only — existing rows get NULL (unknown), not
+          // 0, for these new columns, which is exactly the distinction the
+          // app needs (a food with no known magnesium value isn't the same
+          // as one that contains none).
+          for (final table in ['food_logs', 'custom_foods']) {
+            await db.execute('ALTER TABLE $table ADD COLUMN magnesium REAL');
+            await db.execute('ALTER TABLE $table ADD COLUMN potassium REAL');
+            await db.execute('ALTER TABLE $table ADD COLUMN zinc REAL');
+          }
         }
       },
     );
@@ -85,6 +96,9 @@ class DatabaseService {
       calcium REAL NOT NULL,
       vitamin_c REAL NOT NULL,
       caffeine REAL NOT NULL DEFAULT 0,
+      magnesium REAL,
+      potassium REAL,
+      zinc REAL,
       date_time TEXT NOT NULL
     )
   ''';
@@ -129,6 +143,9 @@ class DatabaseService {
       calcium REAL NOT NULL DEFAULT 0,
       vitamin_c REAL NOT NULL DEFAULT 0,
       caffeine REAL NOT NULL DEFAULT 0,
+      magnesium REAL,
+      potassium REAL,
+      zinc REAL,
       UNIQUE(name, category)
     )
   ''';

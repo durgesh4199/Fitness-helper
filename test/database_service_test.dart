@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:fitness_tracker/models/body_measurement_log.dart';
+import 'package:fitness_tracker/models/food_item.dart';
+import 'package:fitness_tracker/models/food_log.dart';
 import 'package:fitness_tracker/models/water_log.dart';
 import 'package:fitness_tracker/models/weight_log.dart';
 import 'package:fitness_tracker/models/workout_log.dart';
@@ -30,6 +32,12 @@ void main() {
     }
     for (final l in await db.getAllLogs()) {
       if (l.id != null) await db.deleteLog(l.id!);
+    }
+    for (final l in await db.getAllFoodLogs()) {
+      if (l.id != null) await db.deleteFoodLog(l.id!);
+    }
+    for (final f in await db.getAllCustomFoods()) {
+      if (f.id != null) await db.deleteCustomFood(f.id!);
     }
   });
 
@@ -114,5 +122,81 @@ void main() {
 
     final all = await db.getAllLogs();
     expect(all.first.rpe, isNull);
+  });
+
+  test('food log persists magnesium/potassium/zinc, keeping unset ones null (not 0)', () async {
+    await db.insertFoodLog(FoodLog(
+      name: 'Banana',
+      category: 'Fruits',
+      meal: 'Snacks',
+      servings: 1,
+      calories: 105,
+      protein: 1.3,
+      carbs: 27,
+      fiber: 3,
+      fat: 0.4,
+      sugar: 14,
+      iron: 0.3,
+      calcium: 6,
+      vitaminC: 10,
+      caffeine: 0,
+      magnesium: 32,
+      potassium: 422,
+      zinc: null, // deliberately unknown for this row
+      dateTime: DateTime(2026, 1, 1),
+    ));
+
+    final all = await db.getAllFoodLogs();
+    expect(all.length, 1);
+    expect(all.first.magnesium, 32);
+    expect(all.first.potassium, 422);
+    expect(all.first.zinc, isNull);
+  });
+
+  test('food log with no micronutrient data at all round-trips as null, not 0 (pre-v7 shape)', () async {
+    await db.insertFoodLog(FoodLog(
+      name: 'Samosa',
+      category: 'Snacks',
+      meal: 'Snacks',
+      servings: 1,
+      calories: 260,
+      protein: 4,
+      carbs: 30,
+      fiber: 2,
+      fat: 14,
+      sugar: 2,
+      iron: 1.2,
+      calcium: 18,
+      vitaminC: 0,
+      caffeine: 0,
+      dateTime: DateTime(2026, 1, 1),
+    ));
+
+    final all = await db.getAllFoodLogs();
+    expect(all.first.magnesium, isNull);
+    expect(all.first.potassium, isNull);
+    expect(all.first.zinc, isNull);
+  });
+
+  test('custom food carries magnesium/potassium/zinc through upsert', () async {
+    await db.upsertCustomFood(const FoodItem(
+      name: 'My Trail Mix',
+      category: 'Snacks',
+      serving: '1 handful (30g)',
+      calories: 150,
+      protein: 5,
+      carbs: 12,
+      fiber: 2,
+      fat: 9,
+      magnesium: 40,
+      potassium: 200,
+      zinc: 1.1,
+    ));
+
+    final all = await db.getAllCustomFoods();
+    expect(all.length, 1);
+    expect(all.first.magnesium, 40);
+    expect(all.first.potassium, 200);
+    expect(all.first.zinc, 1.1);
   });
 }

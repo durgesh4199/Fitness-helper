@@ -16,6 +16,21 @@ class NutritionTotals {
   final double vitaminC;
   final double caffeine;
 
+  // Sum of only the logs that had a known value for this nutrient — see
+  // the *Known flags below before treating these as the day's true total.
+  final double magnesium;
+  final double potassium;
+  final double zinc;
+
+  // True only if every log included in this total had a known value for
+  // that nutrient. False means the sum above is a partial/lower-bound
+  // figure, not the day's real total — e.g. one food's magnesium isn't in
+  // the reference database yet. The UI must show this distinctly, never
+  // silently present a partial sum as if it were complete.
+  final bool magnesiumKnown;
+  final bool potassiumKnown;
+  final bool zincKnown;
+
   const NutritionTotals({
     this.calories = 0,
     this.protein = 0,
@@ -27,6 +42,12 @@ class NutritionTotals {
     this.calcium = 0,
     this.vitaminC = 0,
     this.caffeine = 0,
+    this.magnesium = 0,
+    this.potassium = 0,
+    this.zinc = 0,
+    this.magnesiumKnown = true,
+    this.potassiumKnown = true,
+    this.zincKnown = true,
   });
 
   NutritionTotals operator +(FoodLog l) => NutritionTotals(
@@ -40,6 +61,12 @@ class NutritionTotals {
         calcium: calcium + l.calcium,
         vitaminC: vitaminC + l.vitaminC,
         caffeine: caffeine + l.caffeine,
+        magnesium: magnesium + (l.magnesium ?? 0),
+        potassium: potassium + (l.potassium ?? 0),
+        zinc: zinc + (l.zinc ?? 0),
+        magnesiumKnown: magnesiumKnown && l.magnesium != null,
+        potassiumKnown: potassiumKnown && l.potassium != null,
+        zincKnown: zincKnown && l.zinc != null,
       );
 }
 
