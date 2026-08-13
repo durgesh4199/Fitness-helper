@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:provider/provider.dart';
+import '../models/daily_habits.dart';
+import '../models/daily_wellness.dart';
 import '../models/mock_data.dart';
+import '../models/nutrition_targets.dart';
 import '../models/water_log.dart';
 import '../providers/health_provider.dart';
 import '../providers/nutrition_provider.dart';
@@ -37,6 +40,8 @@ class HomeScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
         children: [
           _buildHeader(colors, user.name),
+          const SizedBox(height: 20),
+          _WellnessSummaryCard(user: user, nutrition: nutrition, workouts: workouts, health: health),
           const SizedBox(height: 24),
           _buildCalorieCard(colors, workouts, user, health),
           const SizedBox(height: 16),
@@ -371,6 +376,197 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Leads the Home screen with "how's today going" before the detailed
+/// per-metric cards below — a transparent, non-medical wellness summary
+/// (see DailyWellnessCalculator), a short list of concrete next steps
+/// derived from today's actual gaps, and a habit checklist auto-derived
+/// from data the app already tracks.
+class _WellnessSummaryCard extends StatelessWidget {
+  final UserProvider user;
+  final NutritionProvider nutrition;
+  final WorkoutProvider workouts;
+  final HealthProvider health;
+
+  const _WellnessSummaryCard({
+    required this.user,
+    required this.nutrition,
+    required this.workouts,
+    required this.health,
+  });
+
+  Color _scoreColor(DailyWellnessScore s) {
+    if (s.score >= 80) return AppBrand.fiber;
+    if (s.score >= 65) return AppBrand.primary;
+    if (s.score >= 50) return AppBrand.accentOrange;
+    return AppBrand.accentPink;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final targets = NutritionTargets.forUser(user);
+    final totals = nutrition.todayTotals;
+
+    final wellness = DailyWellnessCalculator.compute(
+      totals: totals,
+      targets: targets,
+      waterIntakeMl: user.waterIntakeMl,
+      waterGoalMl: user.waterGoalMl,
+      steps: health.steps,
+      stepGoal: health.stepGoal,
+      sleepMinutes: health.sleepMinutes,
+      todayWorkoutMinutes: workouts.todayMinutes,
+      weekWorkoutCount: workouts.weekWorkoutCount,
+    );
+    final focus = DailyWellnessCalculator.focusSuggestions(
+      totals: totals,
+      targets: targets,
+      waterIntakeMl: user.waterIntakeMl,
+      waterGoalMl: user.waterGoalMl,
+      steps: health.steps,
+      stepGoal: health.stepGoal,
+      sleepMinutes: health.sleepMinutes,
+    );
+    final habits = DailyHabits.compute(
+      waterIntakeMl: user.waterIntakeMl,
+      waterGoalMl: user.waterGoalMl,
+      todayWorkoutMinutes: workouts.todayMinutes,
+      todayLogs: nutrition.todayLogs,
+      steps: health.steps,
+      stepGoal: health.stepGoal,
+      sleepMinutes: health.sleepMinutes,
+    );
+
+    final scoreColor = _scoreColor(wellness);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: colors.cardBorder),
+        boxShadow: [BoxShadow(color: colors.shadow, blurRadius: 16, offset: const Offset(0, 6))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 56,
+                height: 56,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularPercentIndicator(
+                      radius: 28,
+                      lineWidth: 6,
+                      percent: wellness.score / 100,
+                      circularStrokeCap: CircularStrokeCap.round,
+                      backgroundColor: scoreColor.withValues(alpha: 0.14),
+                      progressColor: scoreColor,
+                      animation: true,
+                      animationDuration: 700,
+                    ),
+                    Text('${wellness.score}', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: colors.textPrimary)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Daily Wellness', style: TextStyle(fontSize: 13, color: colors.textSecondary, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 2),
+                    Text(wellness.label.toUpperCase(),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: scoreColor, letterSpacing: 0.3)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (focus.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(height: 1, color: colors.background),
+            const SizedBox(height: 14),
+            Text('Today\'s Focus', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: colors.textSecondary)),
+            const SizedBox(height: 8),
+            ...focus.map((f) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.arrow_right_rounded, size: 18, color: colors.primary),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(f, style: TextStyle(fontSize: 13, color: colors.textPrimary, fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+          ],
+          const SizedBox(height: 14),
+          Container(height: 1, color: colors.background),
+          const SizedBox(height: 14),
+          _HabitRow(habits: habits),
+        ],
+      ),
+    );
+  }
+}
+
+class _HabitRow extends StatelessWidget {
+  final DailyHabits habits;
+
+  const _HabitRow({required this.habits});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final items = <(String, bool?)>[
+      ('Water', habits.waterGoalMet),
+      ('Workout', habits.workoutDone),
+      ('Walk', habits.walked),
+      ('Veg/fruit', habits.ateVegOrFruit),
+      ('Sleep', habits.sleepTargetMet),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('Today\'s Habits', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: colors.textSecondary)),
+            const Spacer(),
+            Text('${habits.metCount}/${habits.totalCount}', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: colors.textSecondary)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: items.map((item) {
+            final (label, met) = item;
+            final color = met == null ? colors.textSecondary : (met ? AppBrand.fiber : colors.textSecondary);
+            final icon = met == null ? Icons.remove_circle_outline_rounded : (met ? Icons.check_circle_rounded : Icons.circle_outlined);
+            return Expanded(
+              child: Column(
+                children: [
+                  Icon(icon, size: 18, color: color.withValues(alpha: met == true ? 1 : 0.6)),
+                  const SizedBox(height: 4),
+                  Text(label, style: TextStyle(fontSize: 10, color: colors.textSecondary)),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }
