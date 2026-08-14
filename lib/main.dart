@@ -35,11 +35,16 @@ void main() async {
   // see docs/FIREBASE_SETUP.md. Without one this simply fails to init;
   // AppAuthProvider itself catches that and reports unavailable (see its
   // doc comment), so the rest of the app still works exactly as before,
-  // fully local and with no sign-in gate, instead of crashing.
+  // fully local and with no sign-in gate, instead of crashing. The failure
+  // is still logged (visible via `flutter run` or `adb logcat`, in every
+  // build mode) so a genuine misconfiguration is diagnosable instead of
+  // silently landing users on the no-sign-in fallback with no explanation.
   try {
     await Firebase.initializeApp();
-  } catch (_) {
-    // Handled by AppAuthProvider.isAvailable — nothing to do here.
+  } catch (e, stack) {
+    debugPrint('Firebase.initializeApp failed — sign-in/cloud backup will be unavailable. '
+        'See docs/FIREBASE_SETUP.md. Error: $e');
+    debugPrintStack(stackTrace: stack);
   }
 
   await NotificationService.instance.init();

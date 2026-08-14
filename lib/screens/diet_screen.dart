@@ -1270,21 +1270,67 @@ class _FoodLogTile extends StatelessWidget {
                 Text(log.name, style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: colors.textPrimary)),
                 const SizedBox(height: 2),
                 Text(
-                  '${_fmt(log.servings)} serving · P ${log.protein.round()}g · C ${log.carbs.round()}g · F ${log.fat.round()}g',
+                  '${_fmt(log.servings)} serving',
                   style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    _MacroChip(label: 'Protein', grams: log.protein, color: AppBrand.protein),
+                    _MacroChip(label: 'Carbs', grams: log.carbs, color: AppBrand.carbs),
+                    _MacroChip(label: 'Fat', grams: log.fat, color: AppBrand.fat),
+                  ],
                 ),
               ],
             ),
           ),
-          Text('${log.calories.round()}', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: colors.textPrimary)),
-          const SizedBox(width: 2),
-          Text('kcal', style: TextStyle(fontSize: 11, color: colors.textSecondary)),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text('${log.calories.round()}', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: colors.textPrimary)),
+              Text('kcal', style: TextStyle(fontSize: 11, color: colors.textSecondary)),
+            ],
+          ),
         ],
       ),
     );
   }
 
   String _fmt(double v) => v == v.roundToDouble() ? v.round().toString() : v.toString();
+}
+
+/// A small labeled, colored pill for one macronutrient — e.g. "Protein 20g".
+/// Used instead of a single-letter abbreviation (the old "P 20g") so it's
+/// readable at a glance without having to remember what P/C/F stand for.
+class _MacroChip extends StatelessWidget {
+  final String label;
+  final double grams;
+  final Color color;
+
+  const _MacroChip({required this.label, required this.grams, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: 5),
+          Text(
+            '$label ${grams.round()}g',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: colors.textPrimary),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _EmptyState extends StatelessWidget {
