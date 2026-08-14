@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'food_item.dart';
+import 'regional_foods.dart';
 import '../theme/app_theme.dart';
 
 class FoodCategory {
@@ -27,6 +28,9 @@ class IndianFoods {
     FoodCategory('Sweets', Icons.icecream_rounded, AppBrand.accentPink),
     FoodCategory('Shakes', Icons.blender_rounded, AppBrand.accentBlue),
     FoodCategory('Supplements', Icons.medication_rounded, AppBrand.primary),
+    FoodCategory('Salads', Icons.grass_rounded, AppBrand.fiber),
+    FoodCategory('Nuts & Seeds', Icons.grain_rounded, AppBrand.accentOrange),
+    FoodCategory('Soups', Icons.soup_kitchen_rounded, AppBrand.accentBlue),
   ];
 
   /// Fallback used for categories not in the built-in list (e.g. a custom
@@ -46,7 +50,12 @@ class IndianFoods {
   // values are well established and widely cited (rounded, scaled to
   // this item's serving weight) — everything else is deliberately left
   // unset (unknown) rather than guessed. See models/food_item.dart.
-  static const items = <FoodItem>[
+  /// Full catalog: this file's hand-curated staples plus the larger
+  /// regional/extended list generated from the user-provided
+  /// Fitness_Tracker_food_list.csv (see RegionalFoods).
+  static final items = <FoodItem>[..._curated, ...RegionalFoods.items];
+
+  static const _curated = <FoodItem>[
     // ---- Grains & Breads ----
     // Whole-grain-based items are a recognized (moderate) phytate context —
     // see e.g. NIH ODS Iron/Zinc fact sheets on whole grains as an inhibitor
