@@ -6,6 +6,7 @@ import 'package:percent_indicator/percent_indicator.dart';
 import 'package:provider/provider.dart';
 import '../models/bioavailability.dart';
 import '../models/calcium_bioavailability_analyzer.dart';
+import '../models/fat_soluble_vitamin_analyzer.dart';
 import '../models/food_item.dart';
 import '../models/food_log.dart';
 import '../models/food_recommendation.dart';
@@ -1147,6 +1148,17 @@ class _MealSection extends StatelessWidget {
     final zincEstimate = ZincBioavailabilityAnalyzer.analyze(mealContext);
     final proteinEstimate = ProteinQualityAnalyzer.analyze(mealContext);
     final calciumEstimate = CalciumBioavailabilityAnalyzer.analyze(mealContext);
+    final fatSolubleVitaminEstimates = [
+      FatSolubleVitaminAnalyzer.analyze(mealContext, nutrientLabel: 'Vitamin A', intake: mealContext.totalVitaminA),
+      FatSolubleVitaminAnalyzer.analyze(mealContext, nutrientLabel: 'Vitamin D', intake: mealContext.totalVitaminD),
+      FatSolubleVitaminAnalyzer.analyze(
+        mealContext,
+        nutrientLabel: 'Vitamin E',
+        intake: mealContext.totalVitaminE,
+        intakeUnit: 'mg',
+      ),
+      FatSolubleVitaminAnalyzer.analyze(mealContext, nutrientLabel: 'Vitamin K', intake: mealContext.totalVitaminK),
+    ].whereType<BioavailabilityEstimate>().toList();
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Column(
@@ -1185,7 +1197,11 @@ class _MealSection extends StatelessWidget {
           ],
           if (calciumEstimate != null) ...[
             BioavailabilityCard(estimate: calciumEstimate),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
+          ],
+          for (final estimate in fatSolubleVitaminEstimates) ...[
+            BioavailabilityCard(estimate: estimate),
+            const SizedBox(height: 8),
           ],
           const SizedBox(height: 14),
         ],

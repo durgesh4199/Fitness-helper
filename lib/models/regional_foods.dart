@@ -1266,7 +1266,9 @@ class RegionalFoods {
     FoodItem(name: 'Muscadine Grapes', category: 'Fruits', serving: '100g', calories: 58, protein: 1.2, carbs: 11.9, fiber: 1.7, fat: 0.5, sugar: 12, iron: 0.4, calcium: 12.7, vitaminC: 19.5),
 
     // ---- Nuts & Seeds ----
-    FoodItem(name: 'Almonds (Badam)', category: 'Nuts & Seeds', serving: '10 pieces (12g)', calories: 111.2, protein: 6.3, carbs: 7.8, fiber: 3.9, fat: 12.4, sugar: 2.5, iron: 1, calcium: 31.1, isPlantProtein: true, phytateContext: true),
+    // vitaminE: almonds are one of the most-cited vitamin E foods (USDA:
+    // ~25.6mg/100g raw), scaled to this item's 12g serving.
+    FoodItem(name: 'Almonds (Badam)', category: 'Nuts & Seeds', serving: '10 pieces (12g)', calories: 111.2, protein: 6.3, carbs: 7.8, fiber: 3.9, fat: 12.4, sugar: 2.5, iron: 1, calcium: 31.1, vitaminE: 3.1, isPlantProtein: true, phytateContext: true),
     FoodItem(name: 'Walnuts (Akhrot)', category: 'Nuts & Seeds', serving: '4 halves (14g)', calories: 178.5, protein: 6.5, carbs: 5.2, fiber: 2.4, fat: 9.1, sugar: 2.9, iron: 0.6, calcium: 73.9, isPlantProtein: true, phytateContext: true),
     FoodItem(name: 'Cashews (Kaju)', category: 'Nuts & Seeds', serving: '10 pieces (15g)', calories: 128.9, protein: 4.7, carbs: 12, fiber: 3.8, fat: 12.1, sugar: 2.8, iron: 0.9, calcium: 54.2, isPlantProtein: true, phytateContext: true),
     FoodItem(name: 'Pistachios (Pista)', category: 'Nuts & Seeds', serving: '15 pieces (12g)', calories: 149.2, protein: 3.7, carbs: 4.8, fiber: 3.9, fat: 15.4, sugar: 1.5, iron: 1.6, calcium: 52.5, isPlantProtein: true, phytateContext: true),
@@ -1275,7 +1277,9 @@ class RegionalFoods {
     FoodItem(name: 'Dried Figs (Anjeer)', category: 'Nuts & Seeds', serving: '2 pieces (20g)', calories: 73.7, protein: 1, carbs: 19.4, fiber: 1.1, fat: 0.3, sugar: 14.7, iron: 0.5, calcium: 26.2, vitaminC: 0.6, isPlantProtein: true, phytateContext: true),
     FoodItem(name: 'Dried Apricot', category: 'Nuts & Seeds', serving: '3 pieces (20g)', calories: 84.5, protein: 0.9, carbs: 20.2, fiber: 2.2, fat: 0.3, sugar: 12.7, iron: 0.8, calcium: 17.8, vitaminC: 0.3, isPlantProtein: true, phytateContext: true),
     FoodItem(name: 'Pumpkin Seeds', category: 'Nuts & Seeds', serving: '1 tbsp (15g)', calories: 97.6, protein: 4.9, carbs: 9.4, fiber: 2.5, fat: 10.8, sugar: 1.6, iron: 1.1, calcium: 69.3, isPlantProtein: true, phytateContext: true),
-    FoodItem(name: 'Sunflower Seeds', category: 'Nuts & Seeds', serving: '1 tbsp (15g)', calories: 125.3, protein: 5.1, carbs: 6.6, fiber: 4, fat: 8.6, sugar: 1.5, iron: 1.1, calcium: 73.6, isPlantProtein: true, phytateContext: true),
+    // vitaminE: sunflower seeds are among the highest-vitaminE common foods
+    // (USDA: ~35.2mg/100g dry roasted), scaled to this item's 15g serving.
+    FoodItem(name: 'Sunflower Seeds', category: 'Nuts & Seeds', serving: '1 tbsp (15g)', calories: 125.3, protein: 5.1, carbs: 6.6, fiber: 4, fat: 8.6, sugar: 1.5, iron: 1.1, calcium: 73.6, vitaminE: 5.3, isPlantProtein: true, phytateContext: true),
     FoodItem(name: 'Chia Seeds', category: 'Nuts & Seeds', serving: '1 tbsp (12g)', calories: 95, protein: 4.3, carbs: 6.5, fiber: 3.7, fat: 8, sugar: 1, iron: 2.6, calcium: 54.1, isPlantProtein: true, phytateContext: true),
     FoodItem(name: 'Flax Seeds (Javas)', category: 'Nuts & Seeds', serving: '1 tbsp (10g)', calories: 92, protein: 5, carbs: 7.4, fiber: 2.3, fat: 7.5, sugar: 0.7, iron: 2.7, calcium: 70, isPlantProtein: true, phytateContext: true),
     FoodItem(name: 'Roasted Peanuts (Shengdana)', category: 'Nuts & Seeds', serving: '2 tbsp (20g)', calories: 139.8, protein: 5.2, carbs: 4.3, fiber: 1.5, fat: 8.2, sugar: 3.8, iron: 1.6, calcium: 75.6, isPlantProtein: true, phytateContext: true),

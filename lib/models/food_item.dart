@@ -24,6 +24,17 @@ class FoodItem {
   final double? potassium; // mg
   final double? zinc; // mg
 
+  // Fat-soluble vitamins — populated only for single-ingredient foods with a
+  // well-established, widely-cited reference value (no regional fortification
+  // ambiguity, e.g. plain nuts, a plain egg, ghee). Left null for composite
+  // dishes and anything where a reliable figure isn't confidently known,
+  // rather than estimated. Units follow standard nutrition-label convention:
+  // vitaminA in mcg RAE, vitaminD in mcg, vitaminE in mg, vitaminK in mcg.
+  final double? vitaminA; // mcg RAE
+  final double? vitaminD; // mcg
+  final double? vitaminE; // mg
+  final double? vitaminK; // mcg
+
   // Bioavailability context flags — deliberately qualitative (present/absent),
   // never a fabricated milligram value for phytate/oxalate/polyphenols, which
   // this app has no reliable per-food source for. Null means "not assessed",
@@ -66,6 +77,10 @@ class FoodItem {
     this.magnesium,
     this.potassium,
     this.zinc,
+    this.vitaminA,
+    this.vitaminD,
+    this.vitaminE,
+    this.vitaminK,
     this.containsHemeIron,
     this.isPlantProtein,
     this.isAnimalProtein,
@@ -80,13 +95,14 @@ class FoodItem {
   static const csvColumns = [
     'name', 'category', 'serving', 'calories', 'protein', 'carbs',
     'fiber', 'fat', 'sugar', 'iron', 'calcium', 'vitaminC', 'caffeine',
-    'magnesium', 'potassium', 'zinc',
+    'magnesium', 'potassium', 'zinc', 'vitaminA', 'vitaminD', 'vitaminE', 'vitaminK',
   ];
 
   List<Object> toCsvRow() => [
         name, category, serving, calories, protein, carbs,
         fiber, fat, sugar, iron, calcium, vitaminC, caffeine,
         magnesium ?? '', potassium ?? '', zinc ?? '',
+        vitaminA ?? '', vitaminD ?? '', vitaminE ?? '', vitaminK ?? '',
       ];
 
   Map<String, Object?> toMap() => {
@@ -107,6 +123,10 @@ class FoodItem {
         'magnesium': magnesium,
         'potassium': potassium,
         'zinc': zinc,
+        'vitamin_a': vitaminA,
+        'vitamin_d': vitaminD,
+        'vitamin_e': vitaminE,
+        'vitamin_k': vitaminK,
         'contains_heme_iron': _boolToDb(containsHemeIron),
         'is_plant_protein': _boolToDb(isPlantProtein),
         'is_animal_protein': _boolToDb(isAnimalProtein),
@@ -134,6 +154,10 @@ class FoodItem {
         magnesium: (m['magnesium'] as num?)?.toDouble(),
         potassium: (m['potassium'] as num?)?.toDouble(),
         zinc: (m['zinc'] as num?)?.toDouble(),
+        vitaminA: (m['vitamin_a'] as num?)?.toDouble(),
+        vitaminD: (m['vitamin_d'] as num?)?.toDouble(),
+        vitaminE: (m['vitamin_e'] as num?)?.toDouble(),
+        vitaminK: (m['vitamin_k'] as num?)?.toDouble(),
         containsHemeIron: _dbToBool(m['contains_heme_iron']),
         isPlantProtein: _dbToBool(m['is_plant_protein']),
         isAnimalProtein: _dbToBool(m['is_animal_protein']),
@@ -165,6 +189,10 @@ class FoodItem {
         magnesium: magnesium,
         potassium: potassium,
         zinc: zinc,
+        vitaminA: vitaminA,
+        vitaminD: vitaminD,
+        vitaminE: vitaminE,
+        vitaminK: vitaminK,
         containsHemeIron: containsHemeIron,
         isPlantProtein: isPlantProtein,
         isAnimalProtein: isAnimalProtein,

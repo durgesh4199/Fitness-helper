@@ -54,6 +54,10 @@ class MealContext {
   final double totalCalcium;
   final double totalZinc;
   final double totalVitaminC;
+  final double totalVitaminA;
+  final double totalVitaminD;
+  final double totalVitaminE;
+  final double totalVitaminK;
 
   final bool containsHemeIronFood;
   final bool containsNonHemeIronFood;
@@ -83,6 +87,10 @@ class MealContext {
     required this.totalCalcium,
     required this.totalZinc,
     required this.totalVitaminC,
+    required this.totalVitaminA,
+    required this.totalVitaminD,
+    required this.totalVitaminE,
+    required this.totalVitaminK,
     required this.containsHemeIronFood,
     required this.containsNonHemeIronFood,
     required this.containsTeaOrCoffee,
@@ -121,6 +129,7 @@ class MealContext {
 class BioavailabilityEstimate {
   final String nutrient;
   final double? intake;
+  final String intakeUnit; // e.g. 'mg' or 'mcg' — how [intake] should be displayed
   final BioavailabilityLevel level;
   final EvidenceConfidence confidence;
   final List<String> enhancers;
@@ -132,6 +141,7 @@ class BioavailabilityEstimate {
   const BioavailabilityEstimate({
     required this.nutrient,
     required this.intake,
+    this.intakeUnit = 'mg',
     required this.level,
     required this.confidence,
     this.enhancers = const [],
@@ -167,6 +177,10 @@ class MealContextBuilder {
         totalCalcium: 0,
         totalZinc: 0,
         totalVitaminC: 0,
+        totalVitaminA: 0,
+        totalVitaminD: 0,
+        totalVitaminE: 0,
+        totalVitaminK: 0,
         containsHemeIronFood: false,
         containsNonHemeIronFood: false,
         containsTeaOrCoffee: false,
@@ -199,6 +213,10 @@ class MealContextBuilder {
       totalCalcium: sum((l) => l.calcium),
       totalZinc: sum((l) => l.zinc ?? 0),
       totalVitaminC: sum((l) => l.vitaminC),
+      totalVitaminA: sum((l) => l.vitaminA ?? 0),
+      totalVitaminD: sum((l) => l.vitaminD ?? 0),
+      totalVitaminE: sum((l) => l.vitaminE ?? 0),
+      totalVitaminK: sum((l) => l.vitaminK ?? 0),
       containsHemeIronFood: hemeFoods.isNotEmpty,
       containsNonHemeIronFood: nonHemeIronFoods.isNotEmpty,
       containsTeaOrCoffee: foods.any((l) => l.category.toLowerCase() == 'beverages' && l.caffeine > 0),

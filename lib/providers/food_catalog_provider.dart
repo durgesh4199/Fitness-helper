@@ -168,6 +168,10 @@ class FoodCatalogProvider extends ChangeNotifier {
         magnesium: _num(cell(row, 'magnesium')),
         potassium: _num(cell(row, 'potassium')),
         zinc: _num(cell(row, 'zinc')),
+        vitaminA: _num(cell(row, 'vitamina')),
+        vitaminD: _num(cell(row, 'vitamind')),
+        vitaminE: _num(cell(row, 'vitamine')),
+        vitaminK: _num(cell(row, 'vitamink')),
       );
 
       final wasInsert = await _db.upsertCustomFood(item);

@@ -24,7 +24,7 @@ class DatabaseService {
     final path = join(await getDatabasesPath(), 'fitness_tracker.db');
     return openDatabase(
       path,
-      version: 11,
+      version: 12,
       onCreate: (db, version) async {
         await db.execute(_createWorkoutLogs);
         await db.execute(_createFoodLogs);
@@ -95,6 +95,17 @@ class DatabaseService {
             await db.execute('ALTER TABLE $table ADD COLUMN is_sprouted INTEGER');
           }
         }
+        if (oldVersion < 12) {
+          // Additive, nullable-only — fat-soluble vitamins, populated only
+          // for a small set of well-established single-ingredient foods (see
+          // FoodItem's doc comment and IndianFoods/RegionalFoods).
+          for (final table in ['food_logs', 'custom_foods']) {
+            await db.execute('ALTER TABLE $table ADD COLUMN vitamin_a REAL');
+            await db.execute('ALTER TABLE $table ADD COLUMN vitamin_d REAL');
+            await db.execute('ALTER TABLE $table ADD COLUMN vitamin_e REAL');
+            await db.execute('ALTER TABLE $table ADD COLUMN vitamin_k REAL');
+          }
+        }
       },
     );
   }
@@ -131,6 +142,10 @@ class DatabaseService {
       magnesium REAL,
       potassium REAL,
       zinc REAL,
+      vitamin_a REAL,
+      vitamin_d REAL,
+      vitamin_e REAL,
+      vitamin_k REAL,
       contains_heme_iron INTEGER,
       is_plant_protein INTEGER,
       is_animal_protein INTEGER,
@@ -185,6 +200,10 @@ class DatabaseService {
       magnesium REAL,
       potassium REAL,
       zinc REAL,
+      vitamin_a REAL,
+      vitamin_d REAL,
+      vitamin_e REAL,
+      vitamin_k REAL,
       contains_heme_iron INTEGER,
       is_plant_protein INTEGER,
       is_animal_protein INTEGER,

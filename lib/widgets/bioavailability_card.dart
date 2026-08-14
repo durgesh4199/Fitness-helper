@@ -75,7 +75,7 @@ class BioavailabilityCard extends StatelessWidget {
               const SizedBox(width: 8),
               if (estimate.intake != null)
                 Text(
-                  '${estimate.intake!.toStringAsFixed(1)} mg logged',
+                  '${estimate.intake!.toStringAsFixed(1)} ${estimate.intakeUnit} logged',
                   style: TextStyle(fontSize: 11.5, color: colors.textSecondary),
                 ),
             ],

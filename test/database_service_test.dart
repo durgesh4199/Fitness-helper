@@ -288,6 +288,37 @@ void main() {
     expect(all.first.isFermented, isNull);
   });
 
+  test('food log persists vitaminA/D/E/K, keeping unset ones null (not 0)', () async {
+    await db.insertFoodLog(FoodLog(
+      name: 'Boiled Egg',
+      category: 'Non-Veg',
+      meal: 'Breakfast',
+      servings: 1,
+      calories: 78,
+      protein: 6,
+      carbs: 0.6,
+      fiber: 0,
+      fat: 5,
+      sugar: 0.6,
+      iron: 0.9,
+      calcium: 28,
+      vitaminC: 0,
+      caffeine: 0,
+      vitaminA: 75,
+      vitaminD: 1.0,
+      vitaminE: 0.5,
+      vitaminK: null, // deliberately unknown for this row
+      dateTime: DateTime(2026, 1, 1),
+    ));
+
+    final all = await db.getAllFoodLogs();
+    expect(all.length, 1);
+    expect(all.first.vitaminA, 75);
+    expect(all.first.vitaminD, 1.0);
+    expect(all.first.vitaminE, 0.5);
+    expect(all.first.vitaminK, isNull);
+  });
+
   test('daily health log insert/read round-trip', () async {
     await db.upsertDailyHealthLog(DailyHealthLog(date: DateTime(2026, 1, 1), steps: 8000, sleepMinutes: 420));
 
