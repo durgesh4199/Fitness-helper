@@ -12,6 +12,8 @@ import '../models/indian_foods.dart';
 import '../models/iron_bioavailability_analyzer.dart';
 import '../models/meal_quality.dart';
 import '../models/nutrition_targets.dart';
+import '../models/protein_quality_analyzer.dart';
+import '../models/zinc_bioavailability_analyzer.dart';
 import '../providers/food_catalog_provider.dart';
 import '../providers/nutrition_provider.dart';
 import '../providers/user_provider.dart';
@@ -1139,7 +1141,10 @@ class _MealSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final mealCals = logs.fold<double>(0, (s, l) => s + l.calories).round();
     final quality = MealQualityScorer.score(logs);
-    final ironEstimate = IronBioavailabilityAnalyzer.analyze(MealContextBuilder.build(logs));
+    final mealContext = MealContextBuilder.build(logs);
+    final ironEstimate = IronBioavailabilityAnalyzer.analyze(mealContext);
+    final zincEstimate = ZincBioavailabilityAnalyzer.analyze(mealContext);
+    final proteinEstimate = ProteinQualityAnalyzer.analyze(mealContext);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Column(
@@ -1166,6 +1171,14 @@ class _MealSection extends StatelessWidget {
               )),
           if (ironEstimate != null) ...[
             BioavailabilityCard(estimate: ironEstimate),
+            const SizedBox(height: 8),
+          ],
+          if (proteinEstimate != null) ...[
+            BioavailabilityCard(estimate: proteinEstimate),
+            const SizedBox(height: 8),
+          ],
+          if (zincEstimate != null) ...[
+            BioavailabilityCard(estimate: zincEstimate),
             const SizedBox(height: 4),
           ],
           const SizedBox(height: 14),
