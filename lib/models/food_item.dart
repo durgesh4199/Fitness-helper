@@ -24,6 +24,20 @@ class FoodItem {
   final double? potassium; // mg
   final double? zinc; // mg
 
+  // Bioavailability context flags — deliberately qualitative (present/absent),
+  // never a fabricated milligram value for phytate/oxalate/polyphenols, which
+  // this app has no reliable per-food source for. Null means "not assessed",
+  // not "no". Only set where the underlying food-science fact is
+  // well-established at the whole-food-category level (e.g. meat/poultry/fish
+  // contain heme iron; legumes are a recognized high-phytate-context food) —
+  // see IndianFoods for exactly which items carry which flags and why.
+  final bool? containsHemeIron;
+  final bool? isPlantProtein;
+  final bool? isAnimalProtein;
+  final bool? isFermented;
+  final bool? phytateContext; // whole grains/legumes/nuts/seeds — a known iron/zinc inhibitor context
+  final bool? oxalateContext; // e.g. spinach — a known calcium/iron inhibitor context
+
   final bool isCustom;
 
   const FoodItem({
@@ -44,6 +58,12 @@ class FoodItem {
     this.magnesium,
     this.potassium,
     this.zinc,
+    this.containsHemeIron,
+    this.isPlantProtein,
+    this.isAnimalProtein,
+    this.isFermented,
+    this.phytateContext,
+    this.oxalateContext,
     this.isCustom = false,
   });
 
@@ -78,6 +98,12 @@ class FoodItem {
         'magnesium': magnesium,
         'potassium': potassium,
         'zinc': zinc,
+        'contains_heme_iron': _boolToDb(containsHemeIron),
+        'is_plant_protein': _boolToDb(isPlantProtein),
+        'is_animal_protein': _boolToDb(isAnimalProtein),
+        'is_fermented': _boolToDb(isFermented),
+        'phytate_context': _boolToDb(phytateContext),
+        'oxalate_context': _boolToDb(oxalateContext),
       };
 
   factory FoodItem.fromMap(Map<String, Object?> m) => FoodItem(
@@ -98,8 +124,17 @@ class FoodItem {
         magnesium: (m['magnesium'] as num?)?.toDouble(),
         potassium: (m['potassium'] as num?)?.toDouble(),
         zinc: (m['zinc'] as num?)?.toDouble(),
+        containsHemeIron: _dbToBool(m['contains_heme_iron']),
+        isPlantProtein: _dbToBool(m['is_plant_protein']),
+        isAnimalProtein: _dbToBool(m['is_animal_protein']),
+        isFermented: _dbToBool(m['is_fermented']),
+        phytateContext: _dbToBool(m['phytate_context']),
+        oxalateContext: _dbToBool(m['oxalate_context']),
         isCustom: true,
       );
+
+  static int? _boolToDb(bool? v) => v == null ? null : (v ? 1 : 0);
+  static bool? _dbToBool(Object? v) => v == null ? null : (v as int) != 0;
 
   FoodItem copyWith({int? id}) => FoodItem(
         id: id ?? this.id,
@@ -119,6 +154,12 @@ class FoodItem {
         magnesium: magnesium,
         potassium: potassium,
         zinc: zinc,
+        containsHemeIron: containsHemeIron,
+        isPlantProtein: isPlantProtein,
+        isAnimalProtein: isAnimalProtein,
+        isFermented: isFermented,
+        phytateContext: phytateContext,
+        oxalateContext: oxalateContext,
         isCustom: isCustom,
       );
 }

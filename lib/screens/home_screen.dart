@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:provider/provider.dart';
+import '../models/bioavailability.dart';
 import '../models/daily_habits.dart';
 import '../models/daily_wellness.dart';
+import '../models/iron_bioavailability_analyzer.dart';
 import '../models/mock_data.dart';
 import '../models/nutrition_targets.dart';
 import '../models/water_log.dart';
@@ -42,6 +44,7 @@ class HomeScreen extends StatelessWidget {
           _buildHeader(colors, user.name),
           const SizedBox(height: 20),
           _WellnessSummaryCard(user: user, nutrition: nutrition, workouts: workouts, health: health),
+          const _NutritionInsightCard(),
           const SizedBox(height: 24),
           _buildCalorieCard(colors, workouts, user, health),
           const SizedBox(height: 16),
@@ -375,6 +378,71 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A single, focused nutrition insight — deliberately not a full
+/// bioavailability dashboard (that lives on the Diet screen, per meal).
+/// Shows nothing unless there's something genuinely actionable for today,
+/// so Home stays uncluttered on days with no notable finding.
+class _NutritionInsightCard extends StatelessWidget {
+  const _NutritionInsightCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final nutrition = context.watch<NutritionProvider>();
+
+    MapEntry<String, BioavailabilityEstimate>? found;
+    for (final entry in nutrition.todayByMeal.entries) {
+      final estimate = IronBioavailabilityAnalyzer.analyze(MealContextBuilder.build(entry.value));
+      if (estimate != null && estimate.recommendations.isNotEmpty) {
+        found = MapEntry(entry.key, estimate);
+        break;
+      }
+    }
+    if (found == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colors.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: colors.primary.withValues(alpha: 0.15)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: colors.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+              child: Icon(Icons.insights_rounded, color: colors.primary, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Nutrition Insight', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: colors.textPrimary)),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Your ${found.key.toLowerCase()} has ${found.value.level.label.toLowerCase()} iron availability context.',
+                    style: TextStyle(fontSize: 13, color: colors.textPrimary, height: 1.4),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    found.value.recommendations.first,
+                    style: TextStyle(fontSize: 12.5, color: colors.textSecondary, height: 1.4),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -27,6 +27,17 @@ class FoodLog {
   final double? potassium; // mg
   final double? zinc; // mg
 
+  // Bioavailability context flags, copied from the source FoodItem at log
+  // time (see FoodItem for what these mean and how conservatively they're
+  // set) — denormalized the same way magnesium/potassium/zinc are, so a
+  // logged meal's context doesn't retroactively change if the catalog does.
+  final bool? containsHemeIron;
+  final bool? isPlantProtein;
+  final bool? isAnimalProtein;
+  final bool? isFermented;
+  final bool? phytateContext;
+  final bool? oxalateContext;
+
   final DateTime dateTime;
 
   const FoodLog({
@@ -48,6 +59,12 @@ class FoodLog {
     this.magnesium,
     this.potassium,
     this.zinc,
+    this.containsHemeIron,
+    this.isPlantProtein,
+    this.isAnimalProtein,
+    this.isFermented,
+    this.phytateContext,
+    this.oxalateContext,
     required this.dateTime,
   });
 
@@ -70,6 +87,14 @@ class FoodLog {
       magnesium: item.magnesium == null ? null : item.magnesium! * servings,
       potassium: item.potassium == null ? null : item.potassium! * servings,
       zinc: item.zinc == null ? null : item.zinc! * servings,
+      // Presence/absence flags aren't scaled by servings — they describe the
+      // food itself, not an amount.
+      containsHemeIron: item.containsHemeIron,
+      isPlantProtein: item.isPlantProtein,
+      isAnimalProtein: item.isAnimalProtein,
+      isFermented: item.isFermented,
+      phytateContext: item.phytateContext,
+      oxalateContext: item.oxalateContext,
       dateTime: when,
     );
   }
@@ -93,6 +118,12 @@ class FoodLog {
         'magnesium': magnesium,
         'potassium': potassium,
         'zinc': zinc,
+        'contains_heme_iron': _boolToDb(containsHemeIron),
+        'is_plant_protein': _boolToDb(isPlantProtein),
+        'is_animal_protein': _boolToDb(isAnimalProtein),
+        'is_fermented': _boolToDb(isFermented),
+        'phytate_context': _boolToDb(phytateContext),
+        'oxalate_context': _boolToDb(oxalateContext),
         'date_time': dateTime.toIso8601String(),
       };
 
@@ -115,8 +146,17 @@ class FoodLog {
         magnesium: (m['magnesium'] as num?)?.toDouble(),
         potassium: (m['potassium'] as num?)?.toDouble(),
         zinc: (m['zinc'] as num?)?.toDouble(),
+        containsHemeIron: _dbToBool(m['contains_heme_iron']),
+        isPlantProtein: _dbToBool(m['is_plant_protein']),
+        isAnimalProtein: _dbToBool(m['is_animal_protein']),
+        isFermented: _dbToBool(m['is_fermented']),
+        phytateContext: _dbToBool(m['phytate_context']),
+        oxalateContext: _dbToBool(m['oxalate_context']),
         dateTime: DateTime.parse(m['date_time'] as String),
       );
+
+  static int? _boolToDb(bool? v) => v == null ? null : (v ? 1 : 0);
+  static bool? _dbToBool(Object? v) => v == null ? null : (v as int) != 0;
 
   FoodLog copyWith({int? id}) => FoodLog(
         id: id ?? this.id,
@@ -137,6 +177,12 @@ class FoodLog {
         magnesium: magnesium,
         potassium: potassium,
         zinc: zinc,
+        containsHemeIron: containsHemeIron,
+        isPlantProtein: isPlantProtein,
+        isAnimalProtein: isAnimalProtein,
+        isFermented: isFermented,
+        phytateContext: phytateContext,
+        oxalateContext: oxalateContext,
         dateTime: dateTime,
       );
 }
