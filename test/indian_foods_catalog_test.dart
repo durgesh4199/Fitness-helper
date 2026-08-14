@@ -63,5 +63,12 @@ void main() {
       expect(dosa.isFermented, isTrue);
       expect(dosa.phytateContext, isNull);
     });
+
+    test('a sprouted-preparation dish is flagged isSprouted, and Brussels Sprouts is not', () {
+      final misal = RegionalFoods.items.firstWhere((f) => f.name == 'Misal (Spicy Sprouts Curry)');
+      expect(misal.isSprouted, isTrue);
+      final brussels = RegionalFoods.items.firstWhere((f) => f.name == 'Brussels Sprouts');
+      expect(brussels.isSprouted, isNull);
+    });
   });
 }

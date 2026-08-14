@@ -38,6 +38,14 @@ class FoodItem {
   final bool? phytateContext; // whole grains/legumes/nuts/seeds — a known iron/zinc inhibitor context
   final bool? oxalateContext; // e.g. spinach — a known calcium/iron inhibitor context
 
+  // Sprouting (germination) is a well-established, distinct preparation
+  // method from fermentation — it activates the seed's own phytase enzyme
+  // and measurably reduces phytic acid content (e.g. sprouted moong/matki/
+  // chana vs. the same legume unsprouted). Only set true for dishes that are
+  // explicitly a sprouted preparation (misal, sprouts salads) — never
+  // inferred from "contains a legume" alone.
+  final bool? isSprouted;
+
   final bool isCustom;
 
   const FoodItem({
@@ -64,6 +72,7 @@ class FoodItem {
     this.isFermented,
     this.phytateContext,
     this.oxalateContext,
+    this.isSprouted,
     this.isCustom = false,
   });
 
@@ -104,6 +113,7 @@ class FoodItem {
         'is_fermented': _boolToDb(isFermented),
         'phytate_context': _boolToDb(phytateContext),
         'oxalate_context': _boolToDb(oxalateContext),
+        'is_sprouted': _boolToDb(isSprouted),
       };
 
   factory FoodItem.fromMap(Map<String, Object?> m) => FoodItem(
@@ -130,6 +140,7 @@ class FoodItem {
         isFermented: _dbToBool(m['is_fermented']),
         phytateContext: _dbToBool(m['phytate_context']),
         oxalateContext: _dbToBool(m['oxalate_context']),
+        isSprouted: _dbToBool(m['is_sprouted']),
         isCustom: true,
       );
 
@@ -160,6 +171,7 @@ class FoodItem {
         isFermented: isFermented,
         phytateContext: phytateContext,
         oxalateContext: oxalateContext,
+        isSprouted: isSprouted,
         isCustom: isCustom,
       );
 }

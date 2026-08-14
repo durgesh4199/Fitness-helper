@@ -222,7 +222,7 @@ void main() {
       caffeine: 0,
       containsHemeIron: true,
       isAnimalProtein: true,
-      // phytateContext/oxalateContext/isPlantProtein/isFermented deliberately left unset.
+      // phytateContext/oxalateContext/isPlantProtein/isFermented/isSprouted deliberately left unset.
       dateTime: DateTime(2026, 1, 1),
     ));
 
@@ -234,6 +234,7 @@ void main() {
     expect(all.first.oxalateContext, isNull);
     expect(all.first.isPlantProtein, isNull);
     expect(all.first.isFermented, isNull);
+    expect(all.first.isSprouted, isNull);
   });
 
   test('custom food carries bioavailability context flags through upsert', () async {
@@ -256,6 +257,35 @@ void main() {
     expect(all.first.phytateContext, isTrue);
     expect(all.first.containsHemeIron, isNull);
     expect(all.first.oxalateContext, isNull);
+    expect(all.first.isSprouted, isNull);
+  });
+
+  test('food log persists isSprouted, a preparation-method flag distinct from isFermented', () async {
+    await db.insertFoodLog(FoodLog(
+      name: 'Misal',
+      category: 'Dals & Legumes',
+      meal: 'Breakfast',
+      servings: 1,
+      calories: 205,
+      protein: 12,
+      carbs: 28,
+      fiber: 10,
+      fat: 9,
+      sugar: 3,
+      iron: 2.4,
+      calcium: 53,
+      vitaminC: 8,
+      caffeine: 0,
+      isPlantProtein: true,
+      phytateContext: true,
+      isSprouted: true,
+      dateTime: DateTime(2026, 1, 1),
+    ));
+
+    final all = await db.getAllFoodLogs();
+    expect(all.length, 1);
+    expect(all.first.isSprouted, isTrue);
+    expect(all.first.isFermented, isNull);
   });
 
   test('daily health log insert/read round-trip', () async {

@@ -12,6 +12,7 @@ FoodLog _log({
   bool? containsHemeIron,
   bool? phytateContext,
   bool? oxalateContext,
+  bool? isSprouted,
 }) {
   return FoodLog(
     name: name,
@@ -31,6 +32,7 @@ FoodLog _log({
     containsHemeIron: containsHemeIron,
     phytateContext: phytateContext,
     oxalateContext: oxalateContext,
+    isSprouted: isSprouted,
     dateTime: DateTime(2026, 1, 1),
   );
 }
@@ -129,6 +131,26 @@ void main() {
       final estimate = IronBioavailabilityAnalyzer.analyze(ctx)!;
       expect(estimate.level, BioavailabilityLevel.moderate);
       expect(estimate.confidence, EvidenceConfidence.low);
+    });
+
+    test('a sprouted phytate-rich food is not counted as an inhibitor', () {
+      final ctx = MealContextBuilder.build([
+        _log(name: 'Sprouted Moong', iron: 2.0, phytateContext: true, isSprouted: true),
+      ]);
+      final estimate = IronBioavailabilityAnalyzer.analyze(ctx)!;
+      expect(estimate.inhibitors, isEmpty);
+      expect(estimate.contextualFactors, contains(contains('sprouted')));
+      // No inhibitor, no enhancer -> moderate baseline, same as the unknown case.
+      expect(estimate.level, BioavailabilityLevel.moderate);
+    });
+
+    test('an unsprouted phytate-rich food alongside a sprouted one still counts as an inhibitor', () {
+      final ctx = MealContextBuilder.build([
+        _log(name: 'Sprouted Moong', iron: 1.0, phytateContext: true, isSprouted: true),
+        _log(name: 'Plain Dal', iron: 1.0, phytateContext: true),
+      ]);
+      final estimate = IronBioavailabilityAnalyzer.analyze(ctx)!;
+      expect(estimate.inhibitors, contains(contains('Phytate')));
     });
 
     test('never expresses the result as a claimed absorbed amount', () {

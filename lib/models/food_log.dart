@@ -37,6 +37,7 @@ class FoodLog {
   final bool? isFermented;
   final bool? phytateContext;
   final bool? oxalateContext;
+  final bool? isSprouted;
 
   final DateTime dateTime;
 
@@ -65,6 +66,7 @@ class FoodLog {
     this.isFermented,
     this.phytateContext,
     this.oxalateContext,
+    this.isSprouted,
     required this.dateTime,
   });
 
@@ -95,6 +97,7 @@ class FoodLog {
       isFermented: item.isFermented,
       phytateContext: item.phytateContext,
       oxalateContext: item.oxalateContext,
+      isSprouted: item.isSprouted,
       dateTime: when,
     );
   }
@@ -124,6 +127,7 @@ class FoodLog {
         'is_fermented': _boolToDb(isFermented),
         'phytate_context': _boolToDb(phytateContext),
         'oxalate_context': _boolToDb(oxalateContext),
+        'is_sprouted': _boolToDb(isSprouted),
         'date_time': dateTime.toIso8601String(),
       };
 
@@ -152,6 +156,7 @@ class FoodLog {
         isFermented: _dbToBool(m['is_fermented']),
         phytateContext: _dbToBool(m['phytate_context']),
         oxalateContext: _dbToBool(m['oxalate_context']),
+        isSprouted: _dbToBool(m['is_sprouted']),
         dateTime: DateTime.parse(m['date_time'] as String),
       );
 
@@ -183,6 +188,7 @@ class FoodLog {
         isFermented: isFermented,
         phytateContext: phytateContext,
         oxalateContext: oxalateContext,
+        isSprouted: isSprouted,
         dateTime: dateTime,
       );
 }

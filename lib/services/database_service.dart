@@ -24,7 +24,7 @@ class DatabaseService {
     final path = join(await getDatabasesPath(), 'fitness_tracker.db');
     return openDatabase(
       path,
-      version: 10,
+      version: 11,
       onCreate: (db, version) async {
         await db.execute(_createWorkoutLogs);
         await db.execute(_createFoodLogs);
@@ -88,6 +88,13 @@ class DatabaseService {
             await db.execute('ALTER TABLE $table ADD COLUMN oxalate_context INTEGER');
           }
         }
+        if (oldVersion < 11) {
+          // Additive, nullable-only — see FoodItem's doc comment for
+          // isSprouted (a preparation-method flag, distinct from isFermented).
+          for (final table in ['food_logs', 'custom_foods']) {
+            await db.execute('ALTER TABLE $table ADD COLUMN is_sprouted INTEGER');
+          }
+        }
       },
     );
   }
@@ -130,6 +137,7 @@ class DatabaseService {
       is_fermented INTEGER,
       phytate_context INTEGER,
       oxalate_context INTEGER,
+      is_sprouted INTEGER,
       date_time TEXT NOT NULL
     )
   ''';
@@ -183,6 +191,7 @@ class DatabaseService {
       is_fermented INTEGER,
       phytate_context INTEGER,
       oxalate_context INTEGER,
+      is_sprouted INTEGER,
       UNIQUE(name, category)
     )
   ''';

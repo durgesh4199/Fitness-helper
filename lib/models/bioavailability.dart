@@ -65,6 +65,7 @@ class MealContext {
   final bool containsFermentedFood;
   final bool containsPlantProteinFood;
   final bool containsAnimalProteinFood;
+  final bool containsSproutedFood;
 
   // Category-derived, not a per-food flag — dairy is a well-established,
   // reasonably-bioavailable calcium source, distinct from oxalate-rich
@@ -92,10 +93,24 @@ class MealContext {
     required this.containsFermentedFood,
     required this.containsPlantProteinFood,
     required this.containsAnimalProteinFood,
+    required this.containsSproutedFood,
     required this.containsDairyFood,
   });
 
   bool get isEmpty => foods.isEmpty;
+
+  /// True only when the meal *does* contain a phytate-context food and every
+  /// single one of those foods is also sprouted — sprouting activates the
+  /// seed's phytase enzyme and measurably reduces phytic acid content, a
+  /// well-established, distinct mechanism from fermentation. A meal with a
+  /// mix of sprouted and unsprouted phytate sources is deliberately NOT
+  /// treated as mitigated — the unsprouted portion still carries the
+  /// inhibitor context.
+  bool get phytateFullyMitigatedBySprouting {
+    final phytateFoods = foods.where((f) => f.phytateContext == true);
+    if (phytateFoods.isEmpty) return false;
+    return phytateFoods.every((f) => f.isSprouted == true);
+  }
 }
 
 /// A meal-context-favorability estimate for one nutrient. Deliberately has
@@ -162,6 +177,7 @@ class MealContextBuilder {
         containsFermentedFood: false,
         containsPlantProteinFood: false,
         containsAnimalProteinFood: false,
+        containsSproutedFood: false,
         containsDairyFood: false,
       );
     }
@@ -193,6 +209,7 @@ class MealContextBuilder {
       containsFermentedFood: foods.any((l) => l.isFermented == true),
       containsPlantProteinFood: foods.any((l) => l.isPlantProtein == true),
       containsAnimalProteinFood: foods.any((l) => l.isAnimalProtein == true),
+      containsSproutedFood: foods.any((l) => l.isSprouted == true),
       containsDairyFood: foods.any((l) => l.category.toLowerCase() == 'dairy'),
     );
   }

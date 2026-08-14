@@ -23,11 +23,15 @@ class ZincBioavailabilityAnalyzer {
     final contextual = <String>[];
     final recommendations = <String>[];
 
+    final phytateMitigated = meal.phytateFullyMitigatedBySprouting;
+
     if (meal.containsAnimalProteinFood) {
       enhancers.add('Animal-source food present');
     }
-    if (meal.containsPhytateRichFood) {
+    if (meal.containsPhytateRichFood && !phytateMitigated) {
       inhibitors.add('Phytate-rich foods (legumes/whole grains)');
+    } else if (phytateMitigated) {
+      contextual.add('This meal\'s phytate-rich food is sprouted, which is known to reduce phytic acid content — more favorable than an unsprouted equivalent');
     }
     if (meal.containsPlantProteinFood && !meal.containsAnimalProteinFood) {
       contextual.add('This meal\'s zinc is primarily from plant sources');
@@ -36,7 +40,7 @@ class ZincBioavailabilityAnalyzer {
     final level = _level(hasEnhancer: enhancers.isNotEmpty, inhibitorCount: inhibitors.length);
     final confidence = _confidence(meal);
 
-    if (meal.containsPhytateRichFood && !meal.containsAnimalProteinFood) {
+    if (meal.containsPhytateRichFood && !meal.containsAnimalProteinFood && !phytateMitigated) {
       recommendations.add(
         'Consider varied protein sources, or preparation such as soaking/sprouting, alongside phytate-rich foods.',
       );
