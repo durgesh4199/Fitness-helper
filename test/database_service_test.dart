@@ -204,6 +204,60 @@ void main() {
     expect(all.first.zinc, 1.1);
   });
 
+  test('food log persists bioavailability context flags, keeping unset ones null (not false)', () async {
+    await db.insertFoodLog(FoodLog(
+      name: 'Chicken Curry',
+      category: 'Non-Veg',
+      meal: 'Dinner',
+      servings: 1,
+      calories: 300,
+      protein: 25,
+      carbs: 8,
+      fiber: 2,
+      fat: 18,
+      sugar: 3,
+      iron: 1.8,
+      calcium: 40,
+      vitaminC: 0,
+      caffeine: 0,
+      containsHemeIron: true,
+      isAnimalProtein: true,
+      // phytateContext/oxalateContext/isPlantProtein/isFermented deliberately left unset.
+      dateTime: DateTime(2026, 1, 1),
+    ));
+
+    final all = await db.getAllFoodLogs();
+    expect(all.length, 1);
+    expect(all.first.containsHemeIron, isTrue);
+    expect(all.first.isAnimalProtein, isTrue);
+    expect(all.first.phytateContext, isNull);
+    expect(all.first.oxalateContext, isNull);
+    expect(all.first.isPlantProtein, isNull);
+    expect(all.first.isFermented, isNull);
+  });
+
+  test('custom food carries bioavailability context flags through upsert', () async {
+    await db.upsertCustomFood(const FoodItem(
+      name: 'Homemade Dal',
+      category: 'Dals & Legumes',
+      serving: '1 bowl',
+      calories: 150,
+      protein: 9,
+      carbs: 20,
+      fiber: 5,
+      fat: 4,
+      isPlantProtein: true,
+      phytateContext: true,
+    ));
+
+    final all = await db.getAllCustomFoods();
+    expect(all.length, 1);
+    expect(all.first.isPlantProtein, isTrue);
+    expect(all.first.phytateContext, isTrue);
+    expect(all.first.containsHemeIron, isNull);
+    expect(all.first.oxalateContext, isNull);
+  });
+
   test('daily health log insert/read round-trip', () async {
     await db.upsertDailyHealthLog(DailyHealthLog(date: DateTime(2026, 1, 1), steps: 8000, sleepMinutes: 420));
 

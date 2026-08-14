@@ -24,7 +24,7 @@ class DatabaseService {
     final path = join(await getDatabasesPath(), 'fitness_tracker.db');
     return openDatabase(
       path,
-      version: 9,
+      version: 10,
       onCreate: (db, version) async {
         await db.execute(_createWorkoutLogs);
         await db.execute(_createFoodLogs);
@@ -75,6 +75,19 @@ class DatabaseService {
           // Additive only — existing tables/data are untouched.
           await db.execute(_createStrengthSets);
         }
+        if (oldVersion < 10) {
+          // Additive, nullable-only — existing rows get NULL ("not assessed"),
+          // not 0/false, for these new bioavailability-context columns. See
+          // FoodItem's doc comment for what each one means.
+          for (final table in ['food_logs', 'custom_foods']) {
+            await db.execute('ALTER TABLE $table ADD COLUMN contains_heme_iron INTEGER');
+            await db.execute('ALTER TABLE $table ADD COLUMN is_plant_protein INTEGER');
+            await db.execute('ALTER TABLE $table ADD COLUMN is_animal_protein INTEGER');
+            await db.execute('ALTER TABLE $table ADD COLUMN is_fermented INTEGER');
+            await db.execute('ALTER TABLE $table ADD COLUMN phytate_context INTEGER');
+            await db.execute('ALTER TABLE $table ADD COLUMN oxalate_context INTEGER');
+          }
+        }
       },
     );
   }
@@ -111,6 +124,12 @@ class DatabaseService {
       magnesium REAL,
       potassium REAL,
       zinc REAL,
+      contains_heme_iron INTEGER,
+      is_plant_protein INTEGER,
+      is_animal_protein INTEGER,
+      is_fermented INTEGER,
+      phytate_context INTEGER,
+      oxalate_context INTEGER,
       date_time TEXT NOT NULL
     )
   ''';
@@ -158,6 +177,12 @@ class DatabaseService {
       magnesium REAL,
       potassium REAL,
       zinc REAL,
+      contains_heme_iron INTEGER,
+      is_plant_protein INTEGER,
+      is_animal_protein INTEGER,
+      is_fermented INTEGER,
+      phytate_context INTEGER,
+      oxalate_context INTEGER,
       UNIQUE(name, category)
     )
   ''';

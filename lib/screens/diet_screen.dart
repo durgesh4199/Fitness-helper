@@ -4,16 +4,22 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:provider/provider.dart';
+import '../models/bioavailability.dart';
+import '../models/calcium_bioavailability_analyzer.dart';
 import '../models/food_item.dart';
 import '../models/food_log.dart';
 import '../models/food_recommendation.dart';
 import '../models/indian_foods.dart';
+import '../models/iron_bioavailability_analyzer.dart';
 import '../models/meal_quality.dart';
 import '../models/nutrition_targets.dart';
+import '../models/protein_quality_analyzer.dart';
+import '../models/zinc_bioavailability_analyzer.dart';
 import '../providers/food_catalog_provider.dart';
 import '../providers/nutrition_provider.dart';
 import '../providers/user_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/bioavailability_card.dart';
 import '../widgets/section_header.dart';
 import 'add_food_screen.dart';
 
@@ -1136,6 +1142,11 @@ class _MealSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final mealCals = logs.fold<double>(0, (s, l) => s + l.calories).round();
     final quality = MealQualityScorer.score(logs);
+    final mealContext = MealContextBuilder.build(logs);
+    final ironEstimate = IronBioavailabilityAnalyzer.analyze(mealContext);
+    final zincEstimate = ZincBioavailabilityAnalyzer.analyze(mealContext);
+    final proteinEstimate = ProteinQualityAnalyzer.analyze(mealContext);
+    final calciumEstimate = CalciumBioavailabilityAnalyzer.analyze(mealContext);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Column(
@@ -1160,6 +1171,22 @@ class _MealSection extends StatelessWidget {
                   child: _FoodLogTile(log: log),
                 ),
               )),
+          if (ironEstimate != null) ...[
+            BioavailabilityCard(estimate: ironEstimate),
+            const SizedBox(height: 8),
+          ],
+          if (proteinEstimate != null) ...[
+            BioavailabilityCard(estimate: proteinEstimate),
+            const SizedBox(height: 8),
+          ],
+          if (zincEstimate != null) ...[
+            BioavailabilityCard(estimate: zincEstimate),
+            const SizedBox(height: 8),
+          ],
+          if (calciumEstimate != null) ...[
+            BioavailabilityCard(estimate: calciumEstimate),
+            const SizedBox(height: 4),
+          ],
           const SizedBox(height: 14),
         ],
       ),
