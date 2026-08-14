@@ -112,6 +112,11 @@ class BioavailabilityCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text('Evidence confidence: ${estimate.confidence.label}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text(
+              estimate.confidence.description,
+              style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
+            ),
           ],
         ),
         actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Got it'))],

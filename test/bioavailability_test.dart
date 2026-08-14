@@ -136,4 +136,14 @@ void main() {
       });
     });
   });
+
+  group('EvidenceConfidence.description', () {
+    test('every level has a distinct, non-empty plain-language explanation', () {
+      final descriptions = EvidenceConfidence.values.map((c) => c.description).toSet();
+      expect(descriptions.length, EvidenceConfidence.values.length);
+      for (final c in EvidenceConfidence.values) {
+        expect(c.description, isNotEmpty);
+      }
+    });
+  });
 }

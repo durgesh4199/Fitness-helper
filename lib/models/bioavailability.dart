@@ -26,14 +26,19 @@ extension EvidenceConfidenceX on EvidenceConfidence {
         EvidenceConfidence.medium => 'Medium',
         EvidenceConfidence.high => 'High',
       };
+
+  /// Plain-language explanation of what this confidence level actually
+  /// means here, shown in the "About this estimate" dialog — evidence
+  /// metadata a reader can act on, not just a bare word.
+  String get description => switch (this) {
+        EvidenceConfidence.high =>
+          'Most of the foods contributing to this estimate have known enhancer/inhibitor data.',
+        EvidenceConfidence.medium =>
+          'Some of the foods contributing to this estimate have known data; the rest are unassessed.',
+        EvidenceConfidence.low =>
+          'Little is known yet about the enhancer/inhibitor context of the foods behind this estimate.',
+      };
 }
-
-enum NutrientInteractionType { enhancer, inhibitor, contextual }
-
-/// How reliable a piece of food data is, for internal bookkeeping — not
-/// shown verbatim to users, but available to widget code that wants to
-/// signal "unknown" differently from "known but estimated".
-enum DataQuality { verified, sourced, estimated, unknown }
 
 /// A summary of one meal (or a day's worth of logs), built purely from
 /// what's already in [FoodLog] — no network calls, no guessed values. Every
