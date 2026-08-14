@@ -22,7 +22,6 @@ import '../providers/user_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bioavailability_card.dart';
 import '../widgets/improve_meal_banner.dart';
-import '../widgets/section_header.dart';
 import 'add_food_screen.dart';
 
 const int _caffeineLimitMg = 400;
@@ -1242,14 +1241,30 @@ class _ComboLogButton extends StatelessWidget {
   }
 }
 
-class _MealSection extends StatelessWidget {
+/// One meal's section on the Diet screen — collapsible so a day with several
+/// meals (each potentially carrying multiple bioavailability cards) doesn't
+/// turn into one long scroll. Collapsed still shows the meal name, calories,
+/// and item count at a glance; tapping the header expands it to the full
+/// detail (quality checklist, improve-meal tip, food list, nutrient cards).
+/// Starts expanded — nothing a user just logged disappears by surprise —
+/// and stays that way until they choose to collapse it.
+class _MealSection extends StatefulWidget {
   final String meal;
   final List<FoodLog> logs;
 
   const _MealSection({required this.meal, required this.logs});
 
   @override
+  State<_MealSection> createState() => _MealSectionState();
+}
+
+class _MealSectionState extends State<_MealSection> {
+  bool _expanded = true;
+
+  @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final logs = widget.logs;
     final mealCals = logs.fold<double>(0, (s, l) => s + l.calories).round();
     final quality = MealQualityScorer.score(logs);
     final mealContext = MealContextBuilder.build(logs);
@@ -1275,52 +1290,93 @@ class _MealSection extends StatelessWidget {
       ?calciumEstimate,
       ...fatSolubleVitaminEstimates,
     ];
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SectionHeader(title: meal, actionLabel: '$mealCals kcal'),
-          const SizedBox(height: 8),
-          _MealQualityRow(quality: quality),
-          const SizedBox(height: 12),
-          ImproveMealBanner(estimates: allEstimates),
-          ...logs.map((log) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Dismissible(
-                  key: ValueKey(log.id),
-                  direction: DismissDirection.endToStart,
-                  onDismissed: (_) => context.read<NutritionProvider>().deleteLog(log.id!),
-                  background: Container(
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(18)),
-                    child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.meal,
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                        ),
+                        if (!_expanded) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            '${logs.length} item${logs.length == 1 ? '' : 's'} · Quality ${quality.score}',
+                            style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                  child: _FoodLogTile(log: log),
-                ),
-              )),
-          if (ironEstimate != null) ...[
-            BioavailabilityCard(estimate: ironEstimate),
+                  Text(
+                    '$mealCals kcal',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: colors.primary),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    _expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                    size: 22,
+                    color: colors.textSecondary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_expanded) ...[
             const SizedBox(height: 8),
+            _MealQualityRow(quality: quality),
+            const SizedBox(height: 12),
+            ImproveMealBanner(estimates: allEstimates),
+            ...logs.map((log) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Dismissible(
+                    key: ValueKey(log.id),
+                    direction: DismissDirection.endToStart,
+                    onDismissed: (_) => context.read<NutritionProvider>().deleteLog(log.id!),
+                    background: Container(
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(18)),
+                      child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+                    ),
+                    child: _FoodLogTile(log: log),
+                  ),
+                )),
+            if (ironEstimate != null) ...[
+              BioavailabilityCard(estimate: ironEstimate),
+              const SizedBox(height: 8),
+            ],
+            if (proteinEstimate != null) ...[
+              BioavailabilityCard(estimate: proteinEstimate),
+              const SizedBox(height: 8),
+            ],
+            if (zincEstimate != null) ...[
+              BioavailabilityCard(estimate: zincEstimate),
+              const SizedBox(height: 8),
+            ],
+            if (calciumEstimate != null) ...[
+              BioavailabilityCard(estimate: calciumEstimate),
+              const SizedBox(height: 8),
+            ],
+            for (final estimate in fatSolubleVitaminEstimates) ...[
+              BioavailabilityCard(estimate: estimate),
+              const SizedBox(height: 8),
+            ],
           ],
-          if (proteinEstimate != null) ...[
-            BioavailabilityCard(estimate: proteinEstimate),
-            const SizedBox(height: 8),
-          ],
-          if (zincEstimate != null) ...[
-            BioavailabilityCard(estimate: zincEstimate),
-            const SizedBox(height: 8),
-          ],
-          if (calciumEstimate != null) ...[
-            BioavailabilityCard(estimate: calciumEstimate),
-            const SizedBox(height: 8),
-          ],
-          for (final estimate in fatSolubleVitaminEstimates) ...[
-            BioavailabilityCard(estimate: estimate),
-            const SizedBox(height: 8),
-          ],
-          const SizedBox(height: 14),
+          const SizedBox(height: 6),
         ],
       ),
     );
