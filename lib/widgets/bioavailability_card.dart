@@ -3,7 +3,7 @@ import '../models/bioavailability.dart';
 import '../theme/app_theme.dart';
 import 'expandable_text.dart';
 
-Color _levelColor(BioavailabilityLevel level, AppPalette colors) {
+Color bioavailabilityLevelColor(BioavailabilityLevel level, AppPalette colors) {
   switch (level) {
     case BioavailabilityLevel.veryLow:
     case BioavailabilityLevel.low:
@@ -30,7 +30,7 @@ class BioavailabilityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final levelColor = _levelColor(estimate.level, colors);
+    final levelColor = bioavailabilityLevelColor(estimate.level, colors);
 
     return Container(
       padding: const EdgeInsets.all(14),

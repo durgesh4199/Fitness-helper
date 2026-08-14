@@ -21,6 +21,7 @@ import '../providers/nutrition_provider.dart';
 import '../providers/user_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bioavailability_card.dart';
+import '../widgets/improve_meal_banner.dart';
 import '../widgets/section_header.dart';
 import 'add_food_screen.dart';
 
@@ -84,6 +85,8 @@ class DietScreen extends StatelessWidget {
             _GlucoseCard(colors: colors, nutrition: nutrition, isToday: isToday, isDiabetic: user.isDiabetic),
             const SizedBox(height: 16),
             _MicroCard(colors: colors, totals: totals, targets: targets),
+            const SizedBox(height: 16),
+            _DailyContextCard(colors: colors, logs: nutrition.selectedLogs),
             if (isToday) ...[
               const SizedBox(height: 16),
               _RecommendationsCard(
@@ -745,6 +748,112 @@ class _MicroBar extends StatelessWidget {
   }
 }
 
+/// A whole-day bioavailability read, distinct from each meal's own
+/// BioavailabilityCard below it: this runs the same analyzers against
+/// *every* log for the selected day combined (not one meal at a time), so
+/// e.g. a vitamin-C-rich breakfast can register as an iron enhancer even if
+/// the iron-rich food was eaten at lunch. Renders nothing when the day has
+/// no nutrient with an estimate to show.
+class _DailyContextCard extends StatelessWidget {
+  final AppPalette colors;
+  final List<FoodLog> logs;
+
+  const _DailyContextCard({required this.colors, required this.logs});
+
+  @override
+  Widget build(BuildContext context) {
+    if (logs.isEmpty) return const SizedBox.shrink();
+
+    final dayContext = MealContextBuilder.build(logs);
+    final iron = IronBioavailabilityAnalyzer.analyze(dayContext);
+    final protein = ProteinQualityAnalyzer.analyze(dayContext);
+    final zinc = ZincBioavailabilityAnalyzer.analyze(dayContext);
+    final calcium = CalciumBioavailabilityAnalyzer.analyze(dayContext);
+    final estimates = [
+      ?iron,
+      ?protein,
+      ?zinc,
+      ?calcium,
+    ];
+    if (estimates.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.cardBorder),
+        boxShadow: [BoxShadow(color: colors.shadow, blurRadius: 14, offset: const Offset(0, 5))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.insights_rounded, size: 16, color: colors.primary),
+              const SizedBox(width: 6),
+              Text(
+                'Today\'s Nutrient Context',
+                style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: colors.textPrimary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'How favorable the day\'s combined meals look for absorption — a whole-day view.',
+            style: TextStyle(fontSize: 11.5, color: colors.textSecondary),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: estimates.map((e) => _DailyContextChip(estimate: e)).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DailyContextChip extends StatelessWidget {
+  final BioavailabilityEstimate estimate;
+
+  const _DailyContextChip({required this.estimate});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final color = bioavailabilityLevelColor(estimate.level, colors);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () => showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('${estimate.nutrient}: ${estimate.level.label}'),
+          content: Text(estimate.explanation, style: const TextStyle(fontSize: 13.5, height: 1.5)),
+          actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Got it'))],
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+            const SizedBox(width: 6),
+            Text(
+              '${estimate.nutrient}: ${estimate.level.label}',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: colors.textPrimary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _RecoSection {
   final RecommendedNutrient nutrient;
   final double remaining;
@@ -1159,6 +1268,13 @@ class _MealSection extends StatelessWidget {
       ),
       FatSolubleVitaminAnalyzer.analyze(mealContext, nutrientLabel: 'Vitamin K', intake: mealContext.totalVitaminK),
     ].whereType<BioavailabilityEstimate>().toList();
+    final allEstimates = [
+      ?ironEstimate,
+      ?proteinEstimate,
+      ?zincEstimate,
+      ?calciumEstimate,
+      ...fatSolubleVitaminEstimates,
+    ];
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Column(
@@ -1168,6 +1284,7 @@ class _MealSection extends StatelessWidget {
           const SizedBox(height: 8),
           _MealQualityRow(quality: quality),
           const SizedBox(height: 12),
+          ImproveMealBanner(estimates: allEstimates),
           ...logs.map((log) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Dismissible(
