@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:provider/provider.dart';
 import '../models/bioavailability.dart';
+import '../models/calcium_bioavailability_analyzer.dart';
 import '../models/food_item.dart';
 import '../models/food_log.dart';
 import '../models/food_recommendation.dart';
@@ -1145,6 +1146,7 @@ class _MealSection extends StatelessWidget {
     final ironEstimate = IronBioavailabilityAnalyzer.analyze(mealContext);
     final zincEstimate = ZincBioavailabilityAnalyzer.analyze(mealContext);
     final proteinEstimate = ProteinQualityAnalyzer.analyze(mealContext);
+    final calciumEstimate = CalciumBioavailabilityAnalyzer.analyze(mealContext);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Column(
@@ -1179,6 +1181,10 @@ class _MealSection extends StatelessWidget {
           ],
           if (zincEstimate != null) ...[
             BioavailabilityCard(estimate: zincEstimate),
+            const SizedBox(height: 8),
+          ],
+          if (calciumEstimate != null) ...[
+            BioavailabilityCard(estimate: calciumEstimate),
             const SizedBox(height: 4),
           ],
           const SizedBox(height: 14),

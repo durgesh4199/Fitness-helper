@@ -66,6 +66,11 @@ class MealContext {
   final bool containsPlantProteinFood;
   final bool containsAnimalProteinFood;
 
+  // Category-derived, not a per-food flag — dairy is a well-established,
+  // reasonably-bioavailable calcium source, distinct from oxalate-rich
+  // plant sources like spinach.
+  final bool containsDairyFood;
+
   const MealContext({
     required this.foods,
     required this.totalCalories,
@@ -87,6 +92,7 @@ class MealContext {
     required this.containsFermentedFood,
     required this.containsPlantProteinFood,
     required this.containsAnimalProteinFood,
+    required this.containsDairyFood,
   });
 
   bool get isEmpty => foods.isEmpty;
@@ -156,6 +162,7 @@ class MealContextBuilder {
         containsFermentedFood: false,
         containsPlantProteinFood: false,
         containsAnimalProteinFood: false,
+        containsDairyFood: false,
       );
     }
 
@@ -186,6 +193,7 @@ class MealContextBuilder {
       containsFermentedFood: foods.any((l) => l.isFermented == true),
       containsPlantProteinFood: foods.any((l) => l.isPlantProtein == true),
       containsAnimalProteinFood: foods.any((l) => l.isAnimalProtein == true),
+      containsDairyFood: foods.any((l) => l.category.toLowerCase() == 'dairy'),
     );
   }
 }

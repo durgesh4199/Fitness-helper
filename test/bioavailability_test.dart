@@ -94,5 +94,12 @@ void main() {
       expect(known.containsPhytateRichFood, isTrue);
       expect(known.containsOxalateRichFood, isTrue);
     });
+
+    test('containsDairyFood is derived from category alone', () {
+      final dairy = MealContextBuilder.build([_log(category: 'Dairy')]);
+      final nonDairy = MealContextBuilder.build([_log(category: 'Vegetables')]);
+      expect(dairy.containsDairyFood, isTrue);
+      expect(nonDairy.containsDairyFood, isFalse);
+    });
   });
 }
