@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/bioavailability.dart';
 import '../theme/app_theme.dart';
+import 'expandable_text.dart';
 
 Color _levelColor(BioavailabilityLevel level, AppPalette colors) {
   switch (level) {
@@ -87,23 +88,7 @@ class BioavailabilityCard extends StatelessWidget {
           ],
           if (estimate.recommendations.isNotEmpty) ...[
             const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: colors.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.lightbulb_outline_rounded, size: 16, color: colors.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      estimate.recommendations.first,
-                      style: TextStyle(fontSize: 12.5, color: colors.textPrimary, height: 1.35),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _RecommendationsBlock(recommendations: estimate.recommendations),
           ],
         ],
       ),
@@ -152,7 +137,89 @@ class _FactorRow extends StatelessWidget {
         children: [
           Icon(icon, size: 15, color: color),
           const SizedBox(width: 7),
-          Expanded(child: Text(text, style: TextStyle(fontSize: 12.5, color: colors.textPrimary))),
+          Expanded(
+            child: ExpandableText(
+              text,
+              maxLines: 2,
+              style: TextStyle(fontSize: 12.5, color: colors.textPrimary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shows every recommendation (never silently drops any past the first) —
+/// the first is always visible; additional ones sit behind a "+N more"
+/// toggle so the card doesn't grow unbounded when there's a lot to say.
+class _RecommendationsBlock extends StatefulWidget {
+  final List<String> recommendations;
+
+  const _RecommendationsBlock({required this.recommendations});
+
+  @override
+  State<_RecommendationsBlock> createState() => _RecommendationsBlockState();
+}
+
+class _RecommendationsBlockState extends State<_RecommendationsBlock> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final extra = widget.recommendations.skip(1).toList();
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: colors.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.lightbulb_outline_rounded, size: 16, color: colors.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ExpandableText(
+                  widget.recommendations.first,
+                  maxLines: 3,
+                  style: TextStyle(fontSize: 12.5, color: colors.textPrimary, height: 1.35),
+                ),
+              ),
+            ],
+          ),
+          if (extra.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            InkWell(
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: Padding(
+                padding: const EdgeInsets.only(left: 24),
+                child: Text(
+                  _expanded ? 'Show fewer suggestions' : '+${extra.length} more suggestion${extra.length == 1 ? '' : 's'}',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: colors.primary),
+                ),
+              ),
+            ),
+            if (_expanded)
+              Padding(
+                padding: const EdgeInsets.only(left: 24, top: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: extra
+                      .map((r) => Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: ExpandableText(
+                              r,
+                              maxLines: 3,
+                              style: TextStyle(fontSize: 12.5, color: colors.textPrimary, height: 1.35),
+                            ),
+                          ))
+                      .toList(),
+                ),
+              ),
+          ],
         ],
       ),
     );
