@@ -33,7 +33,15 @@ jobs:
 
       - run: flutter build apk --release
 
+      # continue-on-error: this step only publishes the built APK for
+      # download — flutter analyze/test/build above already validated the
+      # change. The repo's Actions storage quota has intermittently been
+      # hit here ("Failed to CreateArtifact: Artifact storage quota has
+      # been hit"), which previously failed otherwise-green runs for a
+      # reason unrelated to the code being built.
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: app-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7
