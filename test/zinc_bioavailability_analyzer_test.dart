@@ -10,6 +10,7 @@ FoodLog _log({
   bool? isAnimalProtein,
   bool? isPlantProtein,
   bool? phytateContext,
+  bool? isSprouted,
 }) {
   return FoodLog(
     name: name,
@@ -30,6 +31,7 @@ FoodLog _log({
     isAnimalProtein: isAnimalProtein,
     isPlantProtein: isPlantProtein,
     phytateContext: phytateContext,
+    isSprouted: isSprouted,
     dateTime: DateTime(2026, 1, 1),
   );
 }
@@ -78,6 +80,16 @@ void main() {
         _log(zinc: 1.0, isAnimalProtein: true, phytateContext: false),
       ]);
       expect(ZincBioavailabilityAnalyzer.analyze(ctx)!.confidence, EvidenceConfidence.high);
+    });
+
+    test('a sprouted phytate-rich food is not counted as an inhibitor, and drops the soaking/sprouting tip', () {
+      final ctx = MealContextBuilder.build([
+        _log(name: 'Sprouted Moong Salad', zinc: 1.2, isPlantProtein: true, phytateContext: true, isSprouted: true),
+      ]);
+      final estimate = ZincBioavailabilityAnalyzer.analyze(ctx)!;
+      expect(estimate.inhibitors, isEmpty);
+      expect(estimate.contextualFactors, contains(contains('sprouted')));
+      expect(estimate.recommendations, isEmpty); // already sprouted -- nothing more to suggest
     });
 
     test('never expresses the result as a claimed absorbed amount', () {

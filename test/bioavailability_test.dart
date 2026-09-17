@@ -15,6 +15,7 @@ FoodLog _log({
   bool? isFermented,
   bool? phytateContext,
   bool? oxalateContext,
+  bool? isSprouted,
 }) {
   return FoodLog(
     name: name,
@@ -37,6 +38,7 @@ FoodLog _log({
     isFermented: isFermented,
     phytateContext: phytateContext,
     oxalateContext: oxalateContext,
+    isSprouted: isSprouted,
     dateTime: DateTime(2026, 1, 1),
   );
 }
@@ -100,6 +102,48 @@ void main() {
       final nonDairy = MealContextBuilder.build([_log(category: 'Vegetables')]);
       expect(dairy.containsDairyFood, isTrue);
       expect(nonDairy.containsDairyFood, isFalse);
+    });
+
+    test('containsSproutedFood is true only when a food is explicitly flagged', () {
+      final ctx = MealContextBuilder.build([_log(isSprouted: true)]);
+      expect(ctx.containsSproutedFood, isTrue);
+      final none = MealContextBuilder.build([_log()]);
+      expect(none.containsSproutedFood, isFalse);
+    });
+
+    group('phytateFullyMitigatedBySprouting', () {
+      test('false when the meal has no phytate-context food at all', () {
+        final ctx = MealContextBuilder.build([_log(isSprouted: true)]);
+        expect(ctx.phytateFullyMitigatedBySprouting, isFalse);
+      });
+
+      test('true when the only phytate-context food is also sprouted', () {
+        final ctx = MealContextBuilder.build([_log(phytateContext: true, isSprouted: true)]);
+        expect(ctx.phytateFullyMitigatedBySprouting, isTrue);
+      });
+
+      test('false when a phytate-context food is not sprouted', () {
+        final ctx = MealContextBuilder.build([_log(phytateContext: true)]);
+        expect(ctx.phytateFullyMitigatedBySprouting, isFalse);
+      });
+
+      test('false when only some of the phytate-context foods are sprouted', () {
+        final ctx = MealContextBuilder.build([
+          _log(name: 'Sprouted moong', phytateContext: true, isSprouted: true),
+          _log(name: 'Plain dal', phytateContext: true),
+        ]);
+        expect(ctx.phytateFullyMitigatedBySprouting, isFalse);
+      });
+    });
+  });
+
+  group('EvidenceConfidence.description', () {
+    test('every level has a distinct, non-empty plain-language explanation', () {
+      final descriptions = EvidenceConfidence.values.map((c) => c.description).toSet();
+      expect(descriptions.length, EvidenceConfidence.values.length);
+      for (final c in EvidenceConfidence.values) {
+        expect(c.description, isNotEmpty);
+      }
     });
   });
 }

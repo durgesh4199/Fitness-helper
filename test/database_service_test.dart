@@ -222,7 +222,7 @@ void main() {
       caffeine: 0,
       containsHemeIron: true,
       isAnimalProtein: true,
-      // phytateContext/oxalateContext/isPlantProtein/isFermented deliberately left unset.
+      // phytateContext/oxalateContext/isPlantProtein/isFermented/isSprouted deliberately left unset.
       dateTime: DateTime(2026, 1, 1),
     ));
 
@@ -234,6 +234,7 @@ void main() {
     expect(all.first.oxalateContext, isNull);
     expect(all.first.isPlantProtein, isNull);
     expect(all.first.isFermented, isNull);
+    expect(all.first.isSprouted, isNull);
   });
 
   test('custom food carries bioavailability context flags through upsert', () async {
@@ -256,6 +257,66 @@ void main() {
     expect(all.first.phytateContext, isTrue);
     expect(all.first.containsHemeIron, isNull);
     expect(all.first.oxalateContext, isNull);
+    expect(all.first.isSprouted, isNull);
+  });
+
+  test('food log persists isSprouted, a preparation-method flag distinct from isFermented', () async {
+    await db.insertFoodLog(FoodLog(
+      name: 'Misal',
+      category: 'Dals & Legumes',
+      meal: 'Breakfast',
+      servings: 1,
+      calories: 205,
+      protein: 12,
+      carbs: 28,
+      fiber: 10,
+      fat: 9,
+      sugar: 3,
+      iron: 2.4,
+      calcium: 53,
+      vitaminC: 8,
+      caffeine: 0,
+      isPlantProtein: true,
+      phytateContext: true,
+      isSprouted: true,
+      dateTime: DateTime(2026, 1, 1),
+    ));
+
+    final all = await db.getAllFoodLogs();
+    expect(all.length, 1);
+    expect(all.first.isSprouted, isTrue);
+    expect(all.first.isFermented, isNull);
+  });
+
+  test('food log persists vitaminA/D/E/K, keeping unset ones null (not 0)', () async {
+    await db.insertFoodLog(FoodLog(
+      name: 'Boiled Egg',
+      category: 'Non-Veg',
+      meal: 'Breakfast',
+      servings: 1,
+      calories: 78,
+      protein: 6,
+      carbs: 0.6,
+      fiber: 0,
+      fat: 5,
+      sugar: 0.6,
+      iron: 0.9,
+      calcium: 28,
+      vitaminC: 0,
+      caffeine: 0,
+      vitaminA: 75,
+      vitaminD: 1.0,
+      vitaminE: 0.5,
+      vitaminK: null, // deliberately unknown for this row
+      dateTime: DateTime(2026, 1, 1),
+    ));
+
+    final all = await db.getAllFoodLogs();
+    expect(all.length, 1);
+    expect(all.first.vitaminA, 75);
+    expect(all.first.vitaminD, 1.0);
+    expect(all.first.vitaminE, 0.5);
+    expect(all.first.vitaminK, isNull);
   });
 
   test('daily health log insert/read round-trip', () async {

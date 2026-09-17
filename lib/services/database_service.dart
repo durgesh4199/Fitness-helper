@@ -24,7 +24,7 @@ class DatabaseService {
     final path = join(await getDatabasesPath(), 'fitness_tracker.db');
     return openDatabase(
       path,
-      version: 10,
+      version: 12,
       onCreate: (db, version) async {
         await db.execute(_createWorkoutLogs);
         await db.execute(_createFoodLogs);
@@ -88,6 +88,24 @@ class DatabaseService {
             await db.execute('ALTER TABLE $table ADD COLUMN oxalate_context INTEGER');
           }
         }
+        if (oldVersion < 11) {
+          // Additive, nullable-only — see FoodItem's doc comment for
+          // isSprouted (a preparation-method flag, distinct from isFermented).
+          for (final table in ['food_logs', 'custom_foods']) {
+            await db.execute('ALTER TABLE $table ADD COLUMN is_sprouted INTEGER');
+          }
+        }
+        if (oldVersion < 12) {
+          // Additive, nullable-only — fat-soluble vitamins, populated only
+          // for a small set of well-established single-ingredient foods (see
+          // FoodItem's doc comment and IndianFoods/RegionalFoods).
+          for (final table in ['food_logs', 'custom_foods']) {
+            await db.execute('ALTER TABLE $table ADD COLUMN vitamin_a REAL');
+            await db.execute('ALTER TABLE $table ADD COLUMN vitamin_d REAL');
+            await db.execute('ALTER TABLE $table ADD COLUMN vitamin_e REAL');
+            await db.execute('ALTER TABLE $table ADD COLUMN vitamin_k REAL');
+          }
+        }
       },
     );
   }
@@ -124,12 +142,17 @@ class DatabaseService {
       magnesium REAL,
       potassium REAL,
       zinc REAL,
+      vitamin_a REAL,
+      vitamin_d REAL,
+      vitamin_e REAL,
+      vitamin_k REAL,
       contains_heme_iron INTEGER,
       is_plant_protein INTEGER,
       is_animal_protein INTEGER,
       is_fermented INTEGER,
       phytate_context INTEGER,
       oxalate_context INTEGER,
+      is_sprouted INTEGER,
       date_time TEXT NOT NULL
     )
   ''';
@@ -177,12 +200,17 @@ class DatabaseService {
       magnesium REAL,
       potassium REAL,
       zinc REAL,
+      vitamin_a REAL,
+      vitamin_d REAL,
+      vitamin_e REAL,
+      vitamin_k REAL,
       contains_heme_iron INTEGER,
       is_plant_protein INTEGER,
       is_animal_protein INTEGER,
       is_fermented INTEGER,
       phytate_context INTEGER,
       oxalate_context INTEGER,
+      is_sprouted INTEGER,
       UNIQUE(name, category)
     )
   ''';

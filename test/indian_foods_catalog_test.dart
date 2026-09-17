@@ -63,5 +63,30 @@ void main() {
       expect(dosa.isFermented, isTrue);
       expect(dosa.phytateContext, isNull);
     });
+
+    test('a sprouted-preparation dish is flagged isSprouted, and Brussels Sprouts is not', () {
+      final misal = RegionalFoods.items.firstWhere((f) => f.name == 'Misal (Spicy Sprouts Curry)');
+      expect(misal.isSprouted, isTrue);
+      final brussels = RegionalFoods.items.firstWhere((f) => f.name == 'Brussels Sprouts');
+      expect(brussels.isSprouted, isNull);
+    });
+
+    test('fat-soluble vitamins are populated only for the small, well-established starter set', () {
+      final egg = IndianFoods.items.firstWhere((f) => f.name == 'Boiled Egg');
+      expect(egg.vitaminA, isNotNull);
+      expect(egg.vitaminD, isNotNull);
+      expect(egg.vitaminE, isNotNull);
+      expect(egg.vitaminK, isNull); // not tracked for eggs -- not confidently known
+
+      final almonds = RegionalFoods.items.firstWhere((f) => f.name == 'Almonds (Badam)');
+      expect(almonds.vitaminE, isNotNull);
+
+      // Most items deliberately have none of these set yet.
+      final banana = IndianFoods.items.firstWhere((f) => f.name == 'Banana');
+      expect(banana.vitaminA, isNull);
+      expect(banana.vitaminD, isNull);
+      expect(banana.vitaminE, isNull);
+      expect(banana.vitaminK, isNull);
+    });
   });
 }

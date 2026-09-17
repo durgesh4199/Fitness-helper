@@ -3,7 +3,7 @@ import '../models/bioavailability.dart';
 import '../theme/app_theme.dart';
 import 'expandable_text.dart';
 
-Color _levelColor(BioavailabilityLevel level, AppPalette colors) {
+Color bioavailabilityLevelColor(BioavailabilityLevel level, AppPalette colors) {
   switch (level) {
     case BioavailabilityLevel.veryLow:
     case BioavailabilityLevel.low:
@@ -30,7 +30,7 @@ class BioavailabilityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final levelColor = _levelColor(estimate.level, colors);
+    final levelColor = bioavailabilityLevelColor(estimate.level, colors);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -75,7 +75,7 @@ class BioavailabilityCard extends StatelessWidget {
               const SizedBox(width: 8),
               if (estimate.intake != null)
                 Text(
-                  '${estimate.intake!.toStringAsFixed(1)} mg logged',
+                  '${estimate.intake!.toStringAsFixed(1)} ${estimate.intakeUnit} logged',
                   style: TextStyle(fontSize: 11.5, color: colors.textSecondary),
                 ),
             ],
@@ -112,6 +112,11 @@ class BioavailabilityCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text('Evidence confidence: ${estimate.confidence.label}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text(
+              estimate.confidence.description,
+              style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
+            ),
           ],
         ),
         actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Got it'))],

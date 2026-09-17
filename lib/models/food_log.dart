@@ -27,6 +27,11 @@ class FoodLog {
   final double? potassium; // mg
   final double? zinc; // mg
 
+  final double? vitaminA; // mcg RAE
+  final double? vitaminD; // mcg
+  final double? vitaminE; // mg
+  final double? vitaminK; // mcg
+
   // Bioavailability context flags, copied from the source FoodItem at log
   // time (see FoodItem for what these mean and how conservatively they're
   // set) — denormalized the same way magnesium/potassium/zinc are, so a
@@ -37,6 +42,7 @@ class FoodLog {
   final bool? isFermented;
   final bool? phytateContext;
   final bool? oxalateContext;
+  final bool? isSprouted;
 
   final DateTime dateTime;
 
@@ -59,12 +65,17 @@ class FoodLog {
     this.magnesium,
     this.potassium,
     this.zinc,
+    this.vitaminA,
+    this.vitaminD,
+    this.vitaminE,
+    this.vitaminK,
     this.containsHemeIron,
     this.isPlantProtein,
     this.isAnimalProtein,
     this.isFermented,
     this.phytateContext,
     this.oxalateContext,
+    this.isSprouted,
     required this.dateTime,
   });
 
@@ -87,6 +98,10 @@ class FoodLog {
       magnesium: item.magnesium == null ? null : item.magnesium! * servings,
       potassium: item.potassium == null ? null : item.potassium! * servings,
       zinc: item.zinc == null ? null : item.zinc! * servings,
+      vitaminA: item.vitaminA == null ? null : item.vitaminA! * servings,
+      vitaminD: item.vitaminD == null ? null : item.vitaminD! * servings,
+      vitaminE: item.vitaminE == null ? null : item.vitaminE! * servings,
+      vitaminK: item.vitaminK == null ? null : item.vitaminK! * servings,
       // Presence/absence flags aren't scaled by servings — they describe the
       // food itself, not an amount.
       containsHemeIron: item.containsHemeIron,
@@ -95,6 +110,7 @@ class FoodLog {
       isFermented: item.isFermented,
       phytateContext: item.phytateContext,
       oxalateContext: item.oxalateContext,
+      isSprouted: item.isSprouted,
       dateTime: when,
     );
   }
@@ -118,12 +134,17 @@ class FoodLog {
         'magnesium': magnesium,
         'potassium': potassium,
         'zinc': zinc,
+        'vitamin_a': vitaminA,
+        'vitamin_d': vitaminD,
+        'vitamin_e': vitaminE,
+        'vitamin_k': vitaminK,
         'contains_heme_iron': _boolToDb(containsHemeIron),
         'is_plant_protein': _boolToDb(isPlantProtein),
         'is_animal_protein': _boolToDb(isAnimalProtein),
         'is_fermented': _boolToDb(isFermented),
         'phytate_context': _boolToDb(phytateContext),
         'oxalate_context': _boolToDb(oxalateContext),
+        'is_sprouted': _boolToDb(isSprouted),
         'date_time': dateTime.toIso8601String(),
       };
 
@@ -146,12 +167,17 @@ class FoodLog {
         magnesium: (m['magnesium'] as num?)?.toDouble(),
         potassium: (m['potassium'] as num?)?.toDouble(),
         zinc: (m['zinc'] as num?)?.toDouble(),
+        vitaminA: (m['vitamin_a'] as num?)?.toDouble(),
+        vitaminD: (m['vitamin_d'] as num?)?.toDouble(),
+        vitaminE: (m['vitamin_e'] as num?)?.toDouble(),
+        vitaminK: (m['vitamin_k'] as num?)?.toDouble(),
         containsHemeIron: _dbToBool(m['contains_heme_iron']),
         isPlantProtein: _dbToBool(m['is_plant_protein']),
         isAnimalProtein: _dbToBool(m['is_animal_protein']),
         isFermented: _dbToBool(m['is_fermented']),
         phytateContext: _dbToBool(m['phytate_context']),
         oxalateContext: _dbToBool(m['oxalate_context']),
+        isSprouted: _dbToBool(m['is_sprouted']),
         dateTime: DateTime.parse(m['date_time'] as String),
       );
 
@@ -177,12 +203,17 @@ class FoodLog {
         magnesium: magnesium,
         potassium: potassium,
         zinc: zinc,
+        vitaminA: vitaminA,
+        vitaminD: vitaminD,
+        vitaminE: vitaminE,
+        vitaminK: vitaminK,
         containsHemeIron: containsHemeIron,
         isPlantProtein: isPlantProtein,
         isAnimalProtein: isAnimalProtein,
         isFermented: isFermented,
         phytateContext: phytateContext,
         oxalateContext: oxalateContext,
+        isSprouted: isSprouted,
         dateTime: dateTime,
       );
 }

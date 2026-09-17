@@ -26,14 +26,19 @@ extension EvidenceConfidenceX on EvidenceConfidence {
         EvidenceConfidence.medium => 'Medium',
         EvidenceConfidence.high => 'High',
       };
+
+  /// Plain-language explanation of what this confidence level actually
+  /// means here, shown in the "About this estimate" dialog — evidence
+  /// metadata a reader can act on, not just a bare word.
+  String get description => switch (this) {
+        EvidenceConfidence.high =>
+          'Most of the foods contributing to this estimate have known enhancer/inhibitor data.',
+        EvidenceConfidence.medium =>
+          'Some of the foods contributing to this estimate have known data; the rest are unassessed.',
+        EvidenceConfidence.low =>
+          'Little is known yet about the enhancer/inhibitor context of the foods behind this estimate.',
+      };
 }
-
-enum NutrientInteractionType { enhancer, inhibitor, contextual }
-
-/// How reliable a piece of food data is, for internal bookkeeping — not
-/// shown verbatim to users, but available to widget code that wants to
-/// signal "unknown" differently from "known but estimated".
-enum DataQuality { verified, sourced, estimated, unknown }
 
 /// A summary of one meal (or a day's worth of logs), built purely from
 /// what's already in [FoodLog] — no network calls, no guessed values. Every
@@ -54,6 +59,10 @@ class MealContext {
   final double totalCalcium;
   final double totalZinc;
   final double totalVitaminC;
+  final double totalVitaminA;
+  final double totalVitaminD;
+  final double totalVitaminE;
+  final double totalVitaminK;
 
   final bool containsHemeIronFood;
   final bool containsNonHemeIronFood;
@@ -65,6 +74,7 @@ class MealContext {
   final bool containsFermentedFood;
   final bool containsPlantProteinFood;
   final bool containsAnimalProteinFood;
+  final bool containsSproutedFood;
 
   // Category-derived, not a per-food flag — dairy is a well-established,
   // reasonably-bioavailable calcium source, distinct from oxalate-rich
@@ -82,6 +92,10 @@ class MealContext {
     required this.totalCalcium,
     required this.totalZinc,
     required this.totalVitaminC,
+    required this.totalVitaminA,
+    required this.totalVitaminD,
+    required this.totalVitaminE,
+    required this.totalVitaminK,
     required this.containsHemeIronFood,
     required this.containsNonHemeIronFood,
     required this.containsTeaOrCoffee,
@@ -92,10 +106,24 @@ class MealContext {
     required this.containsFermentedFood,
     required this.containsPlantProteinFood,
     required this.containsAnimalProteinFood,
+    required this.containsSproutedFood,
     required this.containsDairyFood,
   });
 
   bool get isEmpty => foods.isEmpty;
+
+  /// True only when the meal *does* contain a phytate-context food and every
+  /// single one of those foods is also sprouted — sprouting activates the
+  /// seed's phytase enzyme and measurably reduces phytic acid content, a
+  /// well-established, distinct mechanism from fermentation. A meal with a
+  /// mix of sprouted and unsprouted phytate sources is deliberately NOT
+  /// treated as mitigated — the unsprouted portion still carries the
+  /// inhibitor context.
+  bool get phytateFullyMitigatedBySprouting {
+    final phytateFoods = foods.where((f) => f.phytateContext == true);
+    if (phytateFoods.isEmpty) return false;
+    return phytateFoods.every((f) => f.isSprouted == true);
+  }
 }
 
 /// A meal-context-favorability estimate for one nutrient. Deliberately has
@@ -106,6 +134,7 @@ class MealContext {
 class BioavailabilityEstimate {
   final String nutrient;
   final double? intake;
+  final String intakeUnit; // e.g. 'mg' or 'mcg' — how [intake] should be displayed
   final BioavailabilityLevel level;
   final EvidenceConfidence confidence;
   final List<String> enhancers;
@@ -117,6 +146,7 @@ class BioavailabilityEstimate {
   const BioavailabilityEstimate({
     required this.nutrient,
     required this.intake,
+    this.intakeUnit = 'mg',
     required this.level,
     required this.confidence,
     this.enhancers = const [],
@@ -152,6 +182,10 @@ class MealContextBuilder {
         totalCalcium: 0,
         totalZinc: 0,
         totalVitaminC: 0,
+        totalVitaminA: 0,
+        totalVitaminD: 0,
+        totalVitaminE: 0,
+        totalVitaminK: 0,
         containsHemeIronFood: false,
         containsNonHemeIronFood: false,
         containsTeaOrCoffee: false,
@@ -162,6 +196,7 @@ class MealContextBuilder {
         containsFermentedFood: false,
         containsPlantProteinFood: false,
         containsAnimalProteinFood: false,
+        containsSproutedFood: false,
         containsDairyFood: false,
       );
     }
@@ -183,6 +218,10 @@ class MealContextBuilder {
       totalCalcium: sum((l) => l.calcium),
       totalZinc: sum((l) => l.zinc ?? 0),
       totalVitaminC: sum((l) => l.vitaminC),
+      totalVitaminA: sum((l) => l.vitaminA ?? 0),
+      totalVitaminD: sum((l) => l.vitaminD ?? 0),
+      totalVitaminE: sum((l) => l.vitaminE ?? 0),
+      totalVitaminK: sum((l) => l.vitaminK ?? 0),
       containsHemeIronFood: hemeFoods.isNotEmpty,
       containsNonHemeIronFood: nonHemeIronFoods.isNotEmpty,
       containsTeaOrCoffee: foods.any((l) => l.category.toLowerCase() == 'beverages' && l.caffeine > 0),
@@ -193,6 +232,7 @@ class MealContextBuilder {
       containsFermentedFood: foods.any((l) => l.isFermented == true),
       containsPlantProteinFood: foods.any((l) => l.isPlantProtein == true),
       containsAnimalProteinFood: foods.any((l) => l.isAnimalProtein == true),
+      containsSproutedFood: foods.any((l) => l.isSprouted == true),
       containsDairyFood: foods.any((l) => l.category.toLowerCase() == 'dairy'),
     );
   }

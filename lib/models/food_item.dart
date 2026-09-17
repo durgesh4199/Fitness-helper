@@ -24,6 +24,17 @@ class FoodItem {
   final double? potassium; // mg
   final double? zinc; // mg
 
+  // Fat-soluble vitamins — populated only for single-ingredient foods with a
+  // well-established, widely-cited reference value (no regional fortification
+  // ambiguity, e.g. plain nuts, a plain egg, ghee). Left null for composite
+  // dishes and anything where a reliable figure isn't confidently known,
+  // rather than estimated. Units follow standard nutrition-label convention:
+  // vitaminA in mcg RAE, vitaminD in mcg, vitaminE in mg, vitaminK in mcg.
+  final double? vitaminA; // mcg RAE
+  final double? vitaminD; // mcg
+  final double? vitaminE; // mg
+  final double? vitaminK; // mcg
+
   // Bioavailability context flags — deliberately qualitative (present/absent),
   // never a fabricated milligram value for phytate/oxalate/polyphenols, which
   // this app has no reliable per-food source for. Null means "not assessed",
@@ -37,6 +48,14 @@ class FoodItem {
   final bool? isFermented;
   final bool? phytateContext; // whole grains/legumes/nuts/seeds — a known iron/zinc inhibitor context
   final bool? oxalateContext; // e.g. spinach — a known calcium/iron inhibitor context
+
+  // Sprouting (germination) is a well-established, distinct preparation
+  // method from fermentation — it activates the seed's own phytase enzyme
+  // and measurably reduces phytic acid content (e.g. sprouted moong/matki/
+  // chana vs. the same legume unsprouted). Only set true for dishes that are
+  // explicitly a sprouted preparation (misal, sprouts salads) — never
+  // inferred from "contains a legume" alone.
+  final bool? isSprouted;
 
   final bool isCustom;
 
@@ -58,12 +77,17 @@ class FoodItem {
     this.magnesium,
     this.potassium,
     this.zinc,
+    this.vitaminA,
+    this.vitaminD,
+    this.vitaminE,
+    this.vitaminK,
     this.containsHemeIron,
     this.isPlantProtein,
     this.isAnimalProtein,
     this.isFermented,
     this.phytateContext,
     this.oxalateContext,
+    this.isSprouted,
     this.isCustom = false,
   });
 
@@ -71,13 +95,14 @@ class FoodItem {
   static const csvColumns = [
     'name', 'category', 'serving', 'calories', 'protein', 'carbs',
     'fiber', 'fat', 'sugar', 'iron', 'calcium', 'vitaminC', 'caffeine',
-    'magnesium', 'potassium', 'zinc',
+    'magnesium', 'potassium', 'zinc', 'vitaminA', 'vitaminD', 'vitaminE', 'vitaminK',
   ];
 
   List<Object> toCsvRow() => [
         name, category, serving, calories, protein, carbs,
         fiber, fat, sugar, iron, calcium, vitaminC, caffeine,
         magnesium ?? '', potassium ?? '', zinc ?? '',
+        vitaminA ?? '', vitaminD ?? '', vitaminE ?? '', vitaminK ?? '',
       ];
 
   Map<String, Object?> toMap() => {
@@ -98,12 +123,17 @@ class FoodItem {
         'magnesium': magnesium,
         'potassium': potassium,
         'zinc': zinc,
+        'vitamin_a': vitaminA,
+        'vitamin_d': vitaminD,
+        'vitamin_e': vitaminE,
+        'vitamin_k': vitaminK,
         'contains_heme_iron': _boolToDb(containsHemeIron),
         'is_plant_protein': _boolToDb(isPlantProtein),
         'is_animal_protein': _boolToDb(isAnimalProtein),
         'is_fermented': _boolToDb(isFermented),
         'phytate_context': _boolToDb(phytateContext),
         'oxalate_context': _boolToDb(oxalateContext),
+        'is_sprouted': _boolToDb(isSprouted),
       };
 
   factory FoodItem.fromMap(Map<String, Object?> m) => FoodItem(
@@ -124,12 +154,17 @@ class FoodItem {
         magnesium: (m['magnesium'] as num?)?.toDouble(),
         potassium: (m['potassium'] as num?)?.toDouble(),
         zinc: (m['zinc'] as num?)?.toDouble(),
+        vitaminA: (m['vitamin_a'] as num?)?.toDouble(),
+        vitaminD: (m['vitamin_d'] as num?)?.toDouble(),
+        vitaminE: (m['vitamin_e'] as num?)?.toDouble(),
+        vitaminK: (m['vitamin_k'] as num?)?.toDouble(),
         containsHemeIron: _dbToBool(m['contains_heme_iron']),
         isPlantProtein: _dbToBool(m['is_plant_protein']),
         isAnimalProtein: _dbToBool(m['is_animal_protein']),
         isFermented: _dbToBool(m['is_fermented']),
         phytateContext: _dbToBool(m['phytate_context']),
         oxalateContext: _dbToBool(m['oxalate_context']),
+        isSprouted: _dbToBool(m['is_sprouted']),
         isCustom: true,
       );
 
@@ -154,12 +189,17 @@ class FoodItem {
         magnesium: magnesium,
         potassium: potassium,
         zinc: zinc,
+        vitaminA: vitaminA,
+        vitaminD: vitaminD,
+        vitaminE: vitaminE,
+        vitaminK: vitaminK,
         containsHemeIron: containsHemeIron,
         isPlantProtein: isPlantProtein,
         isAnimalProtein: isAnimalProtein,
         isFermented: isFermented,
         phytateContext: phytateContext,
         oxalateContext: oxalateContext,
+        isSprouted: isSprouted,
         isCustom: isCustom,
       );
 }

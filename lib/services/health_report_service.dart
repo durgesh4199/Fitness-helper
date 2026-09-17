@@ -3,7 +3,12 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
+import '../models/bioavailability.dart';
+import '../models/calcium_bioavailability_analyzer.dart';
+import '../models/iron_bioavailability_analyzer.dart';
 import '../models/nutrition_targets.dart';
+import '../models/protein_quality_analyzer.dart';
+import '../models/zinc_bioavailability_analyzer.dart';
 import '../providers/body_measurement_provider.dart';
 import '../providers/health_provider.dart';
 import '../providers/nutrition_provider.dart';
@@ -48,6 +53,17 @@ class HealthReportService {
       fiberSum += t.fiber;
       sugarSum += t.sugar;
     }
+
+    // Today's nutrient bioavailability context — the same estimates shown
+    // on the Diet screen's per-day card, run once here for the export.
+    // Omitted entirely below if there's nothing to show yet.
+    final todayContext = MealContextBuilder.build(nutrition.todayLogs);
+    final bioavailabilityEstimates = [
+      IronBioavailabilityAnalyzer.analyze(todayContext),
+      ProteinQualityAnalyzer.analyze(todayContext),
+      ZincBioavailabilityAnalyzer.analyze(todayContext),
+      CalciumBioavailabilityAnalyzer.analyze(todayContext),
+    ].whereType<BioavailabilityEstimate>().toList();
 
     String fmt1(double? v, String unit) => v == null ? '--' : '${v.toStringAsFixed(1)} $unit';
     String fmtChange(double? v, String unit) {
@@ -117,6 +133,17 @@ class HealthReportService {
           row('Carbohydrates', '${(carbsSum / 7).round()} g'),
           row('Fiber', '${(fiberSum / 7).round()} g  (target ${targets.fiber} g)'),
           row('Sugar', '${(sugarSum / 7).round()} g'),
+          if (bioavailabilityEstimates.isNotEmpty) ...[
+            sectionTitle('Nutrient Bioavailability Context (Today)'),
+            pw.Text(
+              'A context-favorability estimate, not a measured absorption amount — see each row\'s '
+              'evidence confidence. Based on what was logged today.',
+              style: const pw.TextStyle(fontSize: 9, fontStyle: pw.FontStyle.italic, color: PdfColors.grey600),
+            ),
+            pw.SizedBox(height: 4),
+            for (final e in bioavailabilityEstimates)
+              row('${e.nutrient} (confidence: ${e.confidence.label.toLowerCase()})', e.level.label),
+          ],
           sectionTitle('Recent Vitals (from Health Connect, if synced)'),
           row('Steps today', health.steps?.toString() ?? 'Not available'),
           row('7-day average daily steps', health.averageDailySteps == null ? 'Not available' : health.averageDailySteps!.round().toString()),

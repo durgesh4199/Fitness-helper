@@ -27,8 +27,14 @@ class IronBioavailabilityAnalyzer {
     final contextual = <String>[];
     final recommendations = <String>[];
 
+    final phytateMitigated = meal.phytateFullyMitigatedBySprouting;
+
     if (meal.containsVitaminCRichFood) enhancers.add('Vitamin C present');
-    if (meal.containsPhytateRichFood) inhibitors.add('Phytate-rich foods (legumes/whole grains)');
+    if (meal.containsPhytateRichFood && !phytateMitigated) {
+      inhibitors.add('Phytate-rich foods (legumes/whole grains)');
+    } else if (phytateMitigated) {
+      contextual.add('This meal\'s phytate-rich food is sprouted, which is known to reduce phytic acid content — more favorable than an unsprouted equivalent');
+    }
     if (meal.containsOxalateRichFood) inhibitors.add('High-oxalate foods (e.g. spinach)');
     if (meal.containsTeaOrCoffee) inhibitors.add('Tea/coffee near this meal');
     if (meal.containsHemeIronFood) {
